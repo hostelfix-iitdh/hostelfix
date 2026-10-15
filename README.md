@@ -4,9 +4,6 @@
 
 HostelFix lets hostel residents report maintenance and housekeeping problems with their exact location, track them until they are fixed, and confirm that the fix worked. Authorized staff manage and resolve the reports, and administrators review overdue complaints and analytics.
 
-This is a team project for *Course Project 2026: Build, Test and Ship an AI-Enabled Web Application* (Theme 3: Campus services portal), IIT Dharwad.
-
-> **Project status: Milestone 1 (design).** The problem statement and design are complete. Application code is added from Milestone 3 onwards. Sections marked **(Planned)** describe what the repository will contain and are not runnable yet.
 
 ## Problem
 
