@@ -7,7 +7,7 @@ from app.core.errors import http_exception_handler, validation_exception_handler
 from app.routers import health, locations, issues, notifications, admin
 
 app = FastAPI(title=settings.app_name, version="1.0.0",
-              description="HostelFix hostel issue reporting API. Authentication is development-only in MS-3.",
+              description="HostelFix hostel issue reporting API.",
               docs_url="/docs", redoc_url="/redoc", openapi_url="/openapi.json")
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True,
                    allow_methods=["GET","POST","PATCH","DELETE","OPTIONS"], allow_headers=["*"])
