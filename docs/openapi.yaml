@@ -2,8 +2,10 @@ openapi: 3.0.3
 info:
   title: HostelFix API
   version: 1.0.0
-  description: HostelFix API contract. MS-3 implemented operations are backed by the current FastAPI service; authentication,
-    profile management, administration CRUD and SmartReport operations are planned for later milestones.
+  description: HostelFix API contract for MS-3. Implemented operations are backed by the current FastAPI
+    service. Authentication, profile management, admin CRUD, and SmartReport-related operations marked
+    as planned are part of the intended API contract for later milestones and are not all implemented
+    in MS-3.
 servers:
 - url: http://localhost:8000
 tags:
@@ -30,16 +32,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
-        '400':
-          $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
-        '422':
-          $ref: '#/components/responses/Error'
-        '429':
-          $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
   /api/v1/hostels:
@@ -55,15 +47,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageHostel'
-        '400':
-          $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -98,15 +82,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageFloor'
-        '400':
-          $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -148,15 +126,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageWing'
-        '400':
-          $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -198,15 +170,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageLocation'
-        '400':
-          $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -248,15 +214,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageAsset'
-        '400':
-          $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -298,15 +258,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageCategory'
-        '400':
-          $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -341,15 +293,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageProblemType'
-        '400':
-          $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -391,15 +337,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageIssue'
-        '400':
-          $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -459,8 +397,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -470,8 +406,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -496,15 +430,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
-        '400':
-          $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -528,8 +456,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -539,8 +465,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -573,15 +497,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageIssueUpdate'
-        '400':
-          $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -623,8 +541,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConfirmationResult'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -634,8 +550,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -657,8 +571,6 @@ paths:
       responses:
         '204':
           description: Operation completed; no response body.
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -668,8 +580,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -696,8 +606,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FeedbackResult'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -707,8 +615,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -741,19 +647,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageStaffIssue'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -794,8 +692,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StaffIssue'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -805,8 +701,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -839,10 +733,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserPublic'
-        '400':
-          $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
         '409':
           $ref: '#/components/responses/Error'
         '422':
@@ -870,11 +760,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResult'
-        '400':
-          $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
+        '401':
           $ref: '#/components/responses/Error'
         '422':
           $ref: '#/components/responses/Error'
@@ -897,19 +783,7 @@ paths:
       responses:
         '204':
           description: Operation completed; no response body.
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
-          $ref: '#/components/responses/Error'
-        '403':
-          $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
-        '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -928,11 +802,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResult'
-        '400':
+        '401':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
+        '403':
           $ref: '#/components/responses/Error'
         '422':
           $ref: '#/components/responses/Error'
@@ -961,8 +833,6 @@ paths:
                 $ref: '#/components/schemas/MessageResult'
         '400':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
         '409':
           $ref: '#/components/responses/Error'
         '422':
@@ -990,12 +860,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResult'
-        '400':
-          $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
           $ref: '#/components/responses/Error'
         '429':
@@ -1021,12 +885,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResult'
-        '400':
-          $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
           $ref: '#/components/responses/Error'
         '429':
@@ -1053,8 +911,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageResult'
         '400':
-          $ref: '#/components/responses/Error'
-        '404':
           $ref: '#/components/responses/Error'
         '409':
           $ref: '#/components/responses/Error'
@@ -1083,19 +939,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserPublic'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1113,19 +961,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserPublic'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1145,19 +987,13 @@ paths:
       responses:
         '204':
           description: Operation completed; no response body.
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1176,19 +1012,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageIssuePrivate'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1225,19 +1053,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageNotification'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1274,8 +1094,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Notification'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1285,8 +1103,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1319,8 +1135,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SmartReportDraft'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1330,8 +1144,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1356,19 +1168,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Analytics'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1387,8 +1191,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserPublic'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1398,8 +1200,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1424,19 +1224,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageLocation'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1472,8 +1264,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Location'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1483,8 +1273,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1509,8 +1297,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Location'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1520,8 +1306,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1549,8 +1333,6 @@ paths:
       responses:
         '204':
           description: Operation completed; no response body.
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1560,8 +1342,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1588,19 +1368,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageCategory'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1636,8 +1408,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Category'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1647,8 +1417,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1673,8 +1441,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Category'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1684,8 +1450,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1713,8 +1477,6 @@ paths:
       responses:
         '204':
           description: Operation completed; no response body.
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1724,8 +1486,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1752,19 +1512,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageProblemType'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1800,8 +1552,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemType'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1811,8 +1561,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1837,8 +1585,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemType'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1848,8 +1594,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1877,8 +1621,6 @@ paths:
       responses:
         '204':
           description: Operation completed; no response body.
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1888,8 +1630,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1916,19 +1656,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageAsset'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
-        '404':
-          $ref: '#/components/responses/Error'
-        '409':
-          $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -1964,8 +1696,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Asset'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -1975,8 +1705,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -2001,8 +1729,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Asset'
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -2012,8 +1738,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
@@ -2041,8 +1765,6 @@ paths:
       responses:
         '204':
           description: Operation completed; no response body.
-        '400':
-          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Error'
         '403':
@@ -2052,8 +1774,6 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
-          $ref: '#/components/responses/Error'
-        '429':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
