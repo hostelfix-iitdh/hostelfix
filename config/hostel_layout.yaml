@@ -1,0 +1,16 @@
+hostels:
+  - name: Hostel A
+    floors: 8
+    wings: [A, B, C, D, E]
+  - name: Hostel B
+    floors: 8
+    wings: [A, B, C, D, E]
+areas:
+  - toilet
+  - bathroom
+  - washing_machine_area
+  - cloth_drying_area
+  - corridor
+  - lift_lobby
+  - drinking_water_area
+  - room

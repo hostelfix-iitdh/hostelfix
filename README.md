@@ -1,338 +1,340 @@
-# HostelFix: AI-Powered Hostel Maintenance and Housekeeping Portal
+# HostelFix: Hostel Maintenance and Housekeeping Portal
 
-HostelFix is a multi-page web application backed by a MySQL database and a documented REST API. Hostel residents report maintenance and housekeeping problems with their exact location, track them until they are fixed, and confirm the fix. Staff and administrators manage and review those reports in one place.
+HostelFix is an IIT Dharwad course project for reporting and tracking hostel maintenance and housekeeping problems. The project is being developed incrementally across milestones: MS-1 and MS-2 established the problem definition and system design, while MS-3 implements the backend foundation, relational data model, database migrations, synthetic seed data, and REST API.
 
-> **Design document:** see [`HostelFix_Design_Document.pdf`](HostelFix_Design_Document.pdf) for the full specification.
+**Current milestone:** MS-3 — backend and database foundation  
+**Repository:** https://github.com/hostelfix-iitdh/hostelfix
+
+> The full system vision includes a student-facing portal, staff workflows, administrator analytics, and the proposed SmartReport AI feature. This README distinguishes that planned product vision from the functionality implemented in the current MS-3 backend.
+
+## Table of contents
 
 - [Team](#team)
-- [Problem Statement](#problem-statement)
-- [Key Features](#key-features)
-- [SmartReport (AI Feature)](#smartreport-ai-feature)
-- [User Roles](#user-roles)
-- [Complaint Lifecycle](#complaint-lifecycle)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Dataset and Seed Data](#dataset-and-seed-data)
-- [API Documentation](#api-documentation)
-- [Running Tests](#running-tests)
-- [Security and Privacy](#security-and-privacy)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [AI Usage](#ai-usage)
+- [Project background](#project-background)
+- [Milestone scope](#milestone-scope)
+- [System vision and key features](#system-vision-and-key-features)
+- [Roles and complaint lifecycle](#roles-and-complaint-lifecycle)
+- [Technology stack](#technology-stack)
+- [Architecture](#architecture)
+- [Getting started](#getting-started)
+- [Database and synthetic seed data](#database-and-synthetic-seed-data)
+- [REST API](#rest-api)
+- [Testing and validation](#testing-and-validation)
+- [Security and privacy](#security-and-privacy)
+- [Project structure](#project-structure)
+- [Team workflow and contributions](#team-workflow-and-contributions)
+- [AI usage](#ai-usage)
+- [Acknowledgements](#acknowledgements)
 
 ---
 
 ## Team
 
-| No. | Name | Roll Number | GitHub |
-|-----|------|-------------|--------|
+| No. | Name | Roll number | GitHub |
+|---:|---|---|---|
 | 1 | Narasimha Reddy Boggula | CS26MT002 | [@Narasimha013](https://github.com/Narasimha013) |
 | 2 | Aakash Saran V | CS26MT018 | [@AakashSaran018](https://github.com/AakashSaran018) |
 | 3 | Suru Rakesh | CS26MT022 | [@cs26mt022](https://github.com/cs26mt022) |
 
 Repository: <https://github.com/hostelfix-iitdh/hostelfix>
 
----
+## Project background
 
-## Problem Statement
+Residents may notice problems such as dirty corridors, overflowing dustbins, broken lights, or malfunctioning lifts, but reporting the problem and finding out what happened can be unclear. Repeated reports can make it difficult for staff to see what is pending and for the hostel to maintain a consistent history of recurring issues.
 
-In a hostel, a resident who notices a dirty corridor, an overflowing dustbin, a broken light or a stopped lift usually has to find out whom to contact, pass on the details, and later ask again to learn whether anything was done. There is typically no single record showing whether the problem was received, who is handling it, or whether other residents face the same problem.
+HostelFix aims to provide a structured process to report a problem against a specific hostel location, track its progress, and record its resolution. Staff and administrators are intended to use the same system to manage reports and review maintenance and housekeeping activity.
 
-As a result, the same issue is reported repeatedly, staff have no consolidated view of what is pending, and the hostel has no reliable history of recurring problems.
+## Milestone scope
 
-HostelFix gives residents one place to **report** a problem with its exact location, **track** it until fixed, and **confirm** the fix, and gives staff and administrators one place to **manage and review** reports.
+### MS-1 and MS-2: problem definition and system design
 
----
+The earlier milestones established the project problem, requirements, user roles, proposed workflows, and system design. Those design decisions remain the basis for the implementation. Refer to the project design document, if present in the repository, for the full specification.
 
-## Key Features
+### MS-3: backend and database foundation
 
-- **Structured reporting:** cascading selection of hostel, floor, wing and area, plus category and problem type.
-- **SmartReport:** an AI feature that turns a plain-language description (English, Hinglish or mixed) into an editable draft complaint.
-- **Tracked lifecycle:** every complaint gets an ID and moves through a validated status model with a full audit trail.
-- **In-app notifications:** residents are notified whenever the status of their complaint changes.
-- **Community Issues:** a privacy-safe, anonymous list of complaints, where residents can add **"Me too"** instead of filing duplicates.
-- **Resolution confirmation:** the original reporter confirms the fix or requests reopening.
-- **Role-based dashboards:** staff see only their assigned category; administrators get analytics, overdue tracking and account management.
-- **Institute-only access:** students must use a verified `iitdh.ac.in` email or IIT Dharwad Google sign-in.
+The current MS-3 work focuses on the backend and database rather than a complete frontend or fully integrated authentication and AI system. It includes:
 
-### Pages
+- FastAPI application and versioned REST endpoints.
+- SQLAlchemy models for the core hostel, location, category, asset, complaint, status/update, confirmation, feedback, and notification data.
+- Alembic-managed database migrations.
+- MySQL database configuration and Docker Compose setup.
+- Reproducible synthetic seed data for development and demonstrations.
+- Request validation, consistent error responses, pagination, and access/privacy checks in implemented API flows.
+- Automated tests for implemented behaviour.
 
-The application has nine pages:
+Authentication, the frontend, and the SmartReport AI workflow are part of the wider system vision and should be treated as future/integration work unless a corresponding implementation is present in the current branch.
 
-| Page | Available to |
-|------|--------------|
-| Login and Registration | Everyone |
-| Dashboard | Students |
-| Report an Issue | Students |
-| Community Issues | Signed-in users |
-| Issue Details | Signed-in users (role-based content) |
-| My Reports | Students |
-| Profile | Signed-in users |
-| Staff Dashboard | Staff, administrators |
-| Admin Dashboard | Administrators |
+## System vision and key features
 
----
+The overall HostelFix design includes the following capabilities. Not every item is implemented in MS-3.
 
-## SmartReport (AI Feature)
+- **Structured reporting:** choose a hostel, floor, wing, area, category, and problem type.
+- **Tracked complaint lifecycle:** give each complaint an identifier and record its status changes.
+- **Progress history:** retain updates so the handling of a complaint can be followed.
+- **Resolution confirmation:** allow the original reporter to confirm a fix or provide feedback according to the designed workflow.
+- **Community issues:** provide a privacy-conscious view of issues and a possible “Me too” mechanism to reduce duplicate reporting.
+- **Notifications:** notify users about relevant changes.
+- **Staff workflow:** allow staff to view and update complaints within their assigned responsibilities.
+- **Administrator analytics:** support review of complaint volume, status, and overdue work.
+- **Institute-only access:** the design envisages access restricted to the IIT Dharwad community.
 
-SmartReport lets a student describe a problem in natural language and returns a structured, editable draft: hostel, floor, wing, area, asset, category, problem type, short description, missing fields, and whether clarification is needed. Each suggested field comes with the exact supporting words from the student's text; fields not directly supported are highlighted as **inferred**.
+### SmartReport (planned AI feature)
 
-**Example**
+The system vision includes SmartReport, which would convert a resident’s plain-language description—including English, Hinglish, or mixed language—into an editable complaint draft. The proposed flow separates drafting from complaint creation: generating a draft should not create a complaint until the user explicitly submits it.
 
-> "The lift in Hostel 1, Wing B, Floor 4 is not working."
+The earlier design proposed using a backend-only Gemini API integration with schema validation, evidence checks for extracted fields, input limits, rate limiting, and graceful fallback to manual reporting. **SmartReport is not part of the core MS-3 backend scope unless its endpoints and integration are implemented in the current branch.**
 
-| Field | Suggested value | Shown as |
-|-------|-----------------|----------|
-| Hostel / Floor / Wing | Hostel 1 / Floor 4 / Wing B | Stated |
-| Area | Lift Lobby | Inferred |
-| Asset | Not suggested (student chooses the lift) | Missing |
-| Category | Maintenance | Inferred |
-| Problem type | Lift not working | Stated |
+## Roles and complaint lifecycle
 
-**How it is built**
+The design identifies three principal roles:
 
-- **Model:** Google Gemini API, `gemini-2.5-flash-lite` (configurable via environment variable), called **only from the backend** behind a thin provider interface.
-- **Two separate endpoints:** `POST /api/v1/issues/draft` returns a draft only and never creates a complaint; `POST /api/v1/issues` creates a complaint after explicit submission.
-- **Schema-validated output:** every value is validated against real locations, assets, categories and problem types, and anything that does not match is dropped.
-- **Evidence check:** for location fields, the supporting span must appear in the student's text and contain the value or a configured alias (e.g. "H1"), so the model cannot invent a location.
-- **Privacy:** only the typed text and the list of valid option names are sent. Emails, phone numbers and roll numbers are stripped first. No account identifiers are ever sent.
-- **Guardrails:** input length limit (500 characters by default), rate limit (10 drafts per user per day by default), and student text is treated as untrusted data, not instructions.
-- **Graceful failure:** if the AI service is slow, unavailable, over quota or returns invalid output, the manual form remains fully usable.
+| Role | Intended responsibilities |
+|---|---|
+| Student/resident | Submit complaints, view own reports and notifications, and confirm or comment on resolutions |
+| Staff | Review and update complaints relevant to their assigned category |
+| Administrator | Review all complaints, manage system data and accounts, and view analytics |
 
----
+The proposed complaint lifecycle includes statuses such as **Submitted**, **Acknowledged**, **In Progress**, **Resolved**, **Closed**, **Rejected**, and **Reopened**. The intended design validates transitions and records the actor, timestamp, previous status, new status, and any reason or comment. Exact transition permissions and available operations depend on the implemented API and should be verified against `docs/openapi.yaml` and the application code.
 
-## User Roles
+HostelFix is not an emergency-response service.
 
-| Capability | Student | Staff | Administrator |
-|------------|:-------:|:-----:|:-------------:|
-| Submit a complaint (manual or SmartReport) | Yes | No | No |
-| Browse Community Issues | Yes | Yes | Yes |
-| Add or withdraw "Me too" | Yes | No | No |
-| View own reports and notifications | Yes | No | No |
-| See who reported a complaint | Own only | No | Yes |
-| See the room label | Own only | Assigned category | Yes |
-| Confirm resolution or request reopening | Own only | No | No |
-| Update status and add progress notes | No | Assigned category | Yes (any) |
-| Manage accounts, roles, locations, categories, assets | No | No | Yes |
-| View analytics | No | No | Yes |
+## Technology stack
 
-Permissions are enforced by the backend on every protected endpoint. A user cannot give themselves a staff or administrator role.
+| Layer | Technology |
+|---|---|
+| Backend API | Python, FastAPI |
+| API contract | OpenAPI YAML |
+| ORM | SQLAlchemy |
+| Database migrations | Alembic |
+| Database | MySQL 8.4 (Docker image/configuration) |
+| Database driver | PyMySQL |
+| Configuration | Pydantic Settings / environment variables |
+| Containers | Docker and Docker Compose |
+| Automated tests | pytest and HTTPX |
 
----
+The MS-3 backend is designed to run with the database using Docker Compose. Refer to the dependency/configuration files in the repository for the exact versions used by the current branch.
 
-## Complaint Lifecycle
+## Architecture
 
-| From | To | Who | Required |
-|------|----|-----|----------|
-| (new) | Submitted | System | Valid complaint |
-| Submitted | Acknowledged | Staff of category / admin | None |
-| Submitted or Acknowledged | Rejected | Staff of category / admin | Reason |
-| Acknowledged | In Progress | Staff of category / admin | None |
-| In Progress | Resolved | Staff of category / admin | Resolution note |
-| Resolved | Closed | Original reporter | Optional comment |
-| Resolved | Closed | System | 7 days with no response (configurable) |
-| Resolved | Reopened | Original reporter | Comment |
-| Reopened | In Progress | Staff of category / admin | None |
+At a high level:
 
-- **Closed** and **Rejected** are final. A Closed complaint cannot be reopened; the student files a new one.
-- Every change records the actor, actor role, timestamp, previous and new status, reason and comment.
-- Each category has an administrator-set target resolution time. A complaint is **overdue** when its due date has passed and it is not Resolved, Closed or Rejected (calculated, not stored).
-- The backend rejects every transition not listed above.
+1. The client sends an HTTP request to the FastAPI application.
+2. The API validates request data and invokes the relevant route and database logic.
+3. SQLAlchemy maps application entities to MySQL tables.
+4. Alembic manages schema changes through versioned migrations.
+5. The seed script inserts deterministic synthetic development data.
 
-> HostelFix is not an emergency-response service.
+The OpenAPI contract is maintained in `docs/openapi.yaml`. The API’s interactive documentation is normally available at `/docs` and `/redoc` while the application is running.
 
----
-
-## Tech Stack
-
-| Layer | Choice |
-|-------|--------|
-| Backend | Python, FastAPI; OpenAPI 3.x specification as a YAML file |
-| Database | MySQL 8, SQLAlchemy ORM, Alembic migrations |
-| Frontend | HTML, CSS and JavaScript, served by the backend container |
-| AI | Gemini API (`gemini-2.5-flash-lite`), backend only |
-| Authentication | Email + password (Argon2), email verification, password reset, Google Sign-In (ID token verified on the backend), server-side session cookies |
-| Email | SMTP via environment variables; log output in demo mode |
-| Testing | pytest, pytest-cov, Playwright (end-to-end) |
-| CI | GitHub Actions: Ruff, all tests and coverage, MySQL service container |
-| Packaging | Docker and Docker Compose |
-
-The whole stack runs in two containers: a MySQL 8 container and an application container serving both the FastAPI backend and the frontend files.
-
----
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) and Docker Compose (nothing else is required)
+- Git
+- Docker Desktop with Docker Compose on Windows, or Docker Engine and the Compose plugin on Linux/WSL
+- A terminal such as PowerShell or WSL Ubuntu
 
-### Run the project
+For the Docker workflow, a separate local Python installation is generally not required to run the application.
+
+### Run with Docker Compose
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/hostelfix-iitdh/hostelfix.git
 cd hostelfix
 
-# 2. Create your environment file
+# 2. Create the local environment file if the repository provides a template
 cp .env.example .env
-# then edit .env and fill in the values (see "Environment Variables")
 
-# 3. Start everything
-docker compose up
+# 3. Review .env and set the values required by the current configuration.
+# Never commit the real .env file.
+
+# 4. Build and start the application and database
+docker compose up --build
 ```
 
-`docker compose up` starts the database, applies the Alembic migrations, loads the seed data, and starts the application. Once it is running, open the URL printed in the logs (typically <http://localhost:8000>).
+If your checkout does not contain `.env.example`, check the current README/configuration files and create only the environment variables required by the application. Do not invent credentials or commit secrets.
 
-In demo mode, verification and password-reset emails are written to the application log if no SMTP account is configured, so you can copy the links from the logs.
+When the containers start successfully, open:
 
-### Seeded demo accounts
+- API base URL: <http://localhost:8000>
+- Swagger UI: <http://localhost:8000/docs>
+- ReDoc: <http://localhost:8000/redoc>
 
-The seed script creates 40 students, 4 staff (2 per category) and 1 administrator with placeholder emails. All seeded accounts are marked as verified. See `config/` and the seed script for the exact credentials used in development.
+The application may bind to `0.0.0.0` inside the container so the host can reach it through the published port. In a browser on the same computer, use `localhost`.
 
----
-
-## Environment Variables
-
-Copy `.env.example` to `.env`. Never commit `.env`. Typical variables:
-
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` / MySQL credentials | Database connection |
-| `SECRET_KEY` | Session signing |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | First administrator, created at first start |
-| `GEMINI_API_KEY` | Gemini API key (backend only) |
-| `GEMINI_MODEL` | Model name (default `gemini-2.5-flash-lite`) |
-| `GOOGLE_CLIENT_ID` | Google Sign-In audience for ID token verification |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Outgoing email (optional in demo mode) |
-| `SMARTREPORT_MAX_CHARS` | Input length limit (default 500) |
-| `SMARTREPORT_DAILY_LIMIT` | Draft requests per user per day (default 10) |
-| `AUTO_CLOSE_DAYS` | Days before a Resolved complaint is auto-closed (default 7) |
-
-> The authoritative list is in `.env.example`. Update this table if variable names differ.
-
-API keys and credentials belong only in GitHub Secrets and the git-ignored `.env` file.
-
----
-
-## Dataset and Seed Data
-
-HostelFix uses a **synthetic dataset** built by the team. No external dataset is used and no real student data is involved.
-
-- **Layout:** 2 hostels, 8 floors each, 5 wings per floor (80 wings total), defined in `config/hostel_layout.yaml` so it can be corrected without code changes.
-- **Areas per wing:** Toilet, Bathroom, Washing Machine Area, Cloth Drying Area, Corridor, Lift Lobby, Drinking Water Area, Room.
-- **Assets:** six lifts per hostel in three lobbies (Lift 1 near the entrance/stairs, Lifts 2 and 3 for wings B and C, Lifts 4 to 6 for the middle lobby serving wings D and E), plus optional water dispensers. Lift-to-lobby links are read from configuration.
-- **Categories:** Maintenance and Housekeeping, with about 40 problem types, each list including "Other".
-- **Complaints:** about 200 synthetic complaints over the previous 60 days with varied statuses, plus updates, "Me too" records, resolution feedback and notifications.
-- **Determinism:** the seed script uses a fixed random seed, so every run produces the same data. Individual rooms are not seeded; students enter an optional room label instead.
-
-The seed script runs automatically with `docker compose up`, after the migrations.
-
----
-
-## API Documentation
-
-The REST API is documented in an OpenAPI 3.x YAML specification delivered with the repository. When the application is running, FastAPI's interactive docs are typically available at:
-
-- Swagger UI: `/docs`
-- ReDoc: `/redoc`
-
-Key endpoints:
-
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /api/v1/issues/draft` | SmartReport draft (never creates a complaint) |
-| `POST /api/v1/issues` | Create a complaint after explicit submission |
-
----
-
-## Running Tests
-
-All model calls are mocked in unit and integration tests, so tests never depend on an external service or spend API quota.
+### Stop the services
 
 ```bash
-# Unit and integration tests with coverage
-pytest --cov
-
-# Linting
-ruff check .
-
-# End-to-end tests
-playwright install
-pytest tests/e2e
+docker compose down
 ```
 
-Adjust commands to match your project layout. In CI, GitHub Actions runs Ruff, all tests and coverage on every push and pull request, using a MySQL service container.
+To remove the Compose-managed database volume as well, inspect the configured volume name and be certain you no longer need its data before running a volume-removal command. Removing volumes can permanently delete local database contents.
 
-### SmartReport evaluation
+## Database and synthetic seed data
 
-A separate evaluation set of 40 manually reviewed inputs (including Hinglish, typos, very short inputs, partial-location traps and prompt-injection attempts) is run against the real model. For each input we record JSON validity, field matches, clarification behaviour, unsupported values, response time and failures. A small user study (five volunteers, six scenarios each, manual form vs SmartReport) measures whether SmartReport actually saves time. Results are reported honestly in the final report.
+The development database is populated with synthetic data to make API workflows testable without using real student information. The MS-3 seed configuration is designed around:
 
----
+- 2 hostels.
+- 8 floors per hostel.
+- 5 wings (A–E) per floor, for 80 wings in total.
+- 8 area/location types, including toilet, bathroom, washing-machine area, cloth-drying area, corridor, lift lobby, drinking-water area, and room.
+- 640 area locations across the 80 wings.
+- 12 lifts.
+- 45 seeded users.
+- Approximately 40 problem types across maintenance and housekeeping categories.
+- 200 synthetic complaints.
 
-## Security and Privacy
+These counts describe the intended seed dataset for the MS-3 project version; the seed script and configuration in the checked-out branch are the source of truth if they differ.
 
-- **Exact college-domain rule:** student emails are lower-cased, split at the last `@`, and accepted only if the domain is exactly `iitdh.ac.in`. Look-alikes such as `x@notiitdh.ac.in` or `x@mail.iitdh.ac.in` are rejected. Checked on the backend.
-- **Email verification:** single-use token (stored hashed, valid 24 hours); unverified accounts cannot sign in.
-- **Password reset:** single-use token (stored hashed, valid 30 minutes); identical response whether or not the account exists; ends existing sessions.
-- **Google sign-in:** the backend verifies signature, audience, expiry, `email_verified`, and `hd == iitdh.ac.in`.
-- **Passwords:** salted Argon2 (or bcrypt) hashes, never logged or returned by any API.
-- **Sessions:** HttpOnly, SameSite cookies with expiry and CSRF protection.
-- **Authorization:** roles stored server-side; ownership checked on every request; IDs in URLs are never trusted on their own.
-- **Privacy:** community and public responses never include reporter name, email, student ID, internal ID or the room label. Only administrators can see who reported a complaint. Deleting an account removes personal data; complaint history is kept anonymised.
-- **Input safety:** ORM/parameterised queries only, server-side validation and length limits, and rate limiting on login, registration, verification, password reset and draft requests.
-- **Review:** the application will be checked against the OWASP Top 10 and results listed in the final report.
+The seed data is synthetic and intended for development and demonstration. Do not add real student personal information to the repository.
 
----
+## REST API
 
-## Project Structure
+The API is versioned under `/api/v1`. The implemented MS-3 routes cover the core data lookup and complaint workflows, including:
 
-> Illustrative; update to match the actual repository layout.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/health` | Health check |
+| `GET` | `/api/v1/hostels` | List hostels |
+| `GET` | `/api/v1/hostels/{hostel_id}/floors` | List floors for a hostel |
+| `GET` | `/api/v1/floors/{floor_id}/wings` | List wings for a floor |
+| `GET` | `/api/v1/wings/{wing_id}/locations` | List locations for a wing |
+| `GET` | `/api/v1/categories` | List complaint categories |
+| `GET` | `/api/v1/categories/{category_id}/problem-types` | List problem types in a category |
+| `GET` | `/api/v1/locations/{location_id}/assets` | List assets at a location |
+| `GET` | `/api/v1/issues` | List/filter complaints |
+| `POST` | `/api/v1/issues` | Create a complaint |
+| `GET` | `/api/v1/issues/{issue_id}` | Retrieve complaint details |
+| `PATCH` | `/api/v1/issues/{issue_id}` | Edit an eligible complaint |
+| `GET` | `/api/v1/issues/{issue_id}/updates` | Retrieve complaint updates |
+| `POST` | `/api/v1/issues/{issue_id}/confirmations` | Add a confirmation |
+| `DELETE` | `/api/v1/issues/{issue_id}/confirmations` | Withdraw a confirmation |
+| `POST` | `/api/v1/issues/{issue_id}/resolution-feedback` | Submit resolution feedback |
+| `GET` | `/api/v1/staff/issues` | Retrieve the staff complaint queue |
+| `PATCH` | `/api/v1/staff/issues/{issue_id}/status` | Update complaint status |
+| `GET` | `/api/v1/notifications` | List notifications |
+| `PATCH` | `/api/v1/notifications/{notification_id}` | Update notification state |
+| `GET` | `/api/v1/admin/analytics` | Retrieve administrator analytics |
 
+For request schemas, query parameters, response formats, and error details, use the OpenAPI file and the running Swagger UI. Availability and authorization behaviour should be confirmed against the current implementation and tests.
+
+### API conventions
+
+- Request bodies are validated by the API.
+- List endpoints use pagination where supported; the standard response includes pagination information such as `page`, `size`, and `total`.
+- Errors use a consistent response structure.
+- Duplicate active complaint submissions are checked by the current implementation; an identical recent duplicate may return `409 Conflict`.
+- Invalid edits or invalid status transitions may return validation or conflict responses rather than silently changing data.
+
+## Testing and validation
+
+Run tests from the project root in the environment configured by the repository.
+
+### With Docker Compose
+
+If the API service is named `api` in `docker-compose.yml`, run:
+
+```bash
+docker compose exec api python -m pytest -q
 ```
+
+Check the actual service name in `docker-compose.yml` if this command reports that no `api` service exists.
+
+### With a local Python virtual environment
+
+Use the Python version and dependencies specified by the repository. A typical workflow is:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate       # Linux / WSL
+python -m pip install -r requirements.txt
+python -m pytest -q
+```
+
+On Windows PowerShell, activate the environment with:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+The exact test count may change as the project evolves. A passing test suite does not replace checking the application against the OpenAPI contract or manually exercising the running service.
+
+## Security and privacy
+
+The design aims to protect complaint and resident information. The MS-3 implementation includes privacy-aware response handling and validation in the complaint workflows. The wider design includes these requirements:
+
+- Validate request data on the server.
+- Enforce ownership and role checks on protected operations.
+- Do not expose reporter names, email addresses, student IDs, or room labels in public/community complaint responses.
+- Keep credentials and API keys in environment variables or a local, ignored `.env` file.
+- Never commit `.env`, access tokens, passwords, or real student data.
+- Use synthetic data for development and demonstrations.
+
+Authentication and institute-only access must be fully integrated and verified before treating the application as production-ready. Do not assume a design requirement is enforced unless it exists in the current code and is covered by tests.
+
+## Project structure
+
+The following is a representative structure. File names may vary slightly by branch; inspect the repository for the exact layout.
+
+```text
 hostelfix/
-├── app/                    # FastAPI backend (routers, models, services)
-├── frontend/               # HTML, CSS, JavaScript
-├── alembic/                # Database migrations
-├── config/                 # hostel_layout.yaml, categories, lift-to-lobby links
-├── seed/                   # Seed script (Faker + complaint templates)
-├── tests/                  # pytest unit/integration and Playwright e2e tests
-├── docs/                   # Design document and OpenAPI YAML
-├── .github/                # CI workflows and pull request template
-├── AI_USAGE.md
-├── docker-compose.yml
+├── app/
+│   ├── core/              # Shared application logic and configuration
+│   ├── db/                # Database setup and sessions
+│   ├── models/            # SQLAlchemy models
+│   ├── routers/           # FastAPI route handlers
+│   ├── schemas/           # Request and response schemas
+│   ├── main.py            # FastAPI application entry point
+│   └── seed.py            # Synthetic seed data
+├── alembic/               # Versioned database migrations
+├── config/                # Hostel layout and related configuration
+├── docs/
+│   └── openapi.yaml       # OpenAPI specification
+├── tests/                 # Automated tests
+├── AI_USAGE.md            # AI assistance disclosure
+├── DEPENDENCIES.md        # Dependency notes, if present
 ├── Dockerfile
-├── .env.example
+├── docker-compose.yml
+├── .env.example           # Environment template, if present
+├── requirements.txt
 └── README.md
 ```
 
----
+## Team workflow and contributions
 
-## Contributing
+The repository's `main` branch is protected. Follow the active GitHub ruleset when contributing.
 
-The `main` branch is protected by the **"Protect main"** ruleset:
+1. Fetch the latest repository state.
+2. Create a branch named `feature/<topic>` or `fix/<topic>`.
+3. Make changes related to your assigned work.
+4. Run relevant tests and inspect the diff.
+5. Commit using your own GitHub account so the history accurately reflects your contribution.
+6. Push your branch and open a pull request into `main`.
+7. Request another team member to review the PR and address feedback before merging, according to the repository's rules.
 
-- Changes go in **only through pull requests** with at least one approval from another team member.
-- Force pushes and branch deletion are blocked.
+Example:
 
-Workflow:
+```bash
+git fetch origin
+git switch main
+git pull --ff-only origin main
+git switch -c feature/short-description
 
-1. Create a branch named `feature/<topic>` or `fix/<topic>`.
-2. Commit under your own GitHub account so history shows individual contribution.
-3. Open a pull request using the provided template and request a review.
-4. Make sure Ruff, tests and coverage pass in CI before merging.
+# Make and test your actual changes
+git status
+git diff
+git add <specific-files>
+git commit -m "Describe the change"
+git push -u origin feature/short-description
+```
 
-Never commit API keys or credentials. Use GitHub Secrets and the git-ignored `.env` file.
+Do not commit generated virtual environments, cache files, database files, `.env`, or secrets. Avoid broad `git add .` unless you have carefully inspected `git status`.
 
----
+## AI usage
 
-## AI Usage
-
-AI assistance used during the development of this project is documented in [`AI_USAGE.md`](AI_USAGE.md).
-
----
+AI assistance used during development should be disclosed in [`AI_USAGE.md`](AI_USAGE.md), if that file is present in the repository. Team members should review, understand, test, and take responsibility for all submitted code and documentation.
 
 ## Acknowledgements
 
-Built as a course project at IIT Dharwad. The dataset is entirely synthetic and no real student data is used.
+Built as a course project at IIT Dharwad. Development uses synthetic data and is intended for academic demonstration.

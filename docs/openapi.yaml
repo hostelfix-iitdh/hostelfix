@@ -1,0 +1,2968 @@
+openapi: 3.0.3
+info:
+  title: HostelFix API
+  version: 1.0.0
+  description: HostelFix API contract. MS-3 implemented operations are backed by the current FastAPI service; authentication,
+    profile management, administration CRUD and SmartReport operations are planned for later milestones.
+servers:
+- url: http://localhost:8000
+tags:
+- name: System
+- name: Locations
+- name: Issues
+- name: Staff
+- name: Notifications
+- name: Authentication
+- name: Profile
+- name: SmartReport
+- name: Admin
+paths:
+  /api/v1/health:
+    get:
+      summary: Check API health
+      description: Check API health.
+      tags:
+      - System
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+  /api/v1/hostels:
+    get:
+      summary: List hostels
+      description: List hostels.
+      tags:
+      - Locations
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageHostel'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/hostels/{hostel_id}/floors:
+    get:
+      summary: List floors in a hostel
+      description: List floors in a hostel.
+      tags:
+      - Locations
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageFloor'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: hostel_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/floors/{floor_id}/wings:
+    get:
+      summary: List wings on a floor
+      description: List wings on a floor.
+      tags:
+      - Locations
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageWing'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: floor_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/wings/{wing_id}/locations:
+    get:
+      summary: List locations in a wing
+      description: List locations in a wing.
+      tags:
+      - Locations
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageLocation'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: wing_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/locations/{location_id}/assets:
+    get:
+      summary: List assets at a location
+      description: List assets at a location.
+      tags:
+      - Locations
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageAsset'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: location_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/categories:
+    get:
+      summary: List complaint categories
+      description: List complaint categories.
+      tags:
+      - Locations
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCategory'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/categories/{category_id}/problem-types:
+    get:
+      summary: List problem types in a category
+      description: List problem types in a category.
+      tags:
+      - Locations
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageProblemType'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: category_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/issues:
+    get:
+      summary: List public issues
+      description: List public issues.
+      tags:
+      - Issues
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageIssue'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - submitted
+          - acknowledged
+          - in_progress
+          - resolved
+          - closed
+          - reopened
+      - name: location_id
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: problem_type_id
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: q
+        in: query
+        schema:
+          type: string
+          maxLength: 100
+    post:
+      summary: Submit a complaint
+      description: Submit a complaint.
+      tags:
+      - Issues
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCreate'
+  /api/v1/issues/{issue_id}:
+    get:
+      summary: Get a public complaint
+      description: Get a public complaint.
+      tags:
+      - Issues
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+    patch:
+      summary: Edit own eligible complaint
+      description: Edit own eligible complaint.
+      tags:
+      - Issues
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssuePatch'
+  /api/v1/issues/{issue_id}/updates:
+    get:
+      summary: List complaint status history
+      description: List complaint status history.
+      tags:
+      - Issues
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageIssueUpdate'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/issues/{issue_id}/confirmations:
+    post:
+      summary: Confirm a similar complaint
+      description: Confirm a similar complaint.
+      tags:
+      - Issues
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmationResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+    delete:
+      summary: Withdraw complaint confirmation
+      description: Withdraw complaint confirmation.
+      tags:
+      - Issues
+      responses:
+        '204':
+          description: Operation completed; no response body.
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+  /api/v1/issues/{issue_id}/resolution-feedback:
+    post:
+      summary: Confirm resolution or request reopening
+      description: Confirm resolution or request reopening.
+      tags:
+      - Issues
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolutionFeedbackIn'
+  /api/v1/staff/issues:
+    get:
+      summary: List staff complaint queue
+      description: List staff complaint queue.
+      tags:
+      - Staff
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageStaffIssue'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+      - name: status
+        in: query
+        schema:
+          type: string
+  /api/v1/staff/issues/{issue_id}/status:
+    patch:
+      summary: Update complaint status
+      description: Update complaint status.
+      tags:
+      - Staff
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffIssue'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdate'
+  /api/v1/auth/register:
+    post:
+      summary: Register a student account
+      description: Planned for MS-5. Student email must use the exact iitdh.ac.in domain.
+      tags:
+      - Authentication
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterIn'
+  /api/v1/auth/login:
+    post:
+      summary: Sign in with email and password
+      description: Planned for MS-5. Establishes a secure session cookie.
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginIn'
+  /api/v1/auth/logout:
+    post:
+      summary: Sign out and invalidate the current session
+      description: Planned for MS-5.
+      tags:
+      - Authentication
+      responses:
+        '204':
+          description: Operation completed; no response body.
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+  /api/v1/auth/google:
+    post:
+      summary: Sign in with Google
+      description: Planned for MS-5. The backend verifies the Google ID token and college domain.
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginIn'
+  /api/v1/auth/verify-email:
+    post:
+      summary: Verify an email address
+      description: Planned for MS-5. Verification tokens are single-use and expire.
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenIn'
+  /api/v1/auth/verification-resend:
+    post:
+      summary: Resend email verification
+      description: Planned for MS-5. Rate limited.
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailIn'
+  /api/v1/auth/password-reset:
+    post:
+      summary: Request a password reset
+      description: Planned for MS-5. Response does not disclose whether an account exists.
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailIn'
+  /api/v1/auth/password-reset/complete:
+    post:
+      summary: Complete a password reset
+      description: Planned for MS-5. Invalidates existing sessions.
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetIn'
+  /api/v1/users/me:
+    get:
+      summary: Get the current user profile
+      description: Planned for MS-5.
+      tags:
+      - Profile
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+    patch:
+      summary: Update the current user profile
+      description: Planned for MS-5.
+      tags:
+      - Profile
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfilePatch'
+    delete:
+      summary: Delete the current account
+      description: Planned for MS-5. Complaint records are anonymised rather than deleted.
+      tags:
+      - Profile
+      responses:
+        '204':
+          description: Operation completed; no response body.
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+  /api/v1/users/me/issues:
+    get:
+      summary: List the current user’s complaints
+      description: Planned for MS-4/MS-5. Includes the reporter’s own room label.
+      tags:
+      - Profile
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageIssuePrivate'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/notifications:
+    get:
+      summary: List current user notifications
+      description: List current user notifications.
+      tags:
+      - Notifications
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageNotification'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+  /api/v1/notifications/{notification_id}:
+    patch:
+      summary: Mark a notification read or unread
+      description: Mark a notification read or unread.
+      tags:
+      - Notifications
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkRead'
+  /api/v1/issues/draft:
+    post:
+      summary: Create a SmartReport draft without saving a complaint
+      description: Planned for MS-5. Does not create or modify an issue.
+      tags:
+      - SmartReport
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmartReportDraft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmartReportIn'
+  /api/v1/admin/analytics:
+    get:
+      summary: Get complaint analytics
+      description: Get complaint analytics.
+      tags:
+      - Admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analytics'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+  /api/v1/admin/staff:
+    post:
+      summary: Create a staff account
+      description: Planned for MS-5. Sends a set-password link.
+      tags:
+      - Admin
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffCreate'
+  /api/v1/admin/locations:
+    get:
+      summary: List locations
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageLocation'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+    post:
+      summary: Create location
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationCreate'
+  /api/v1/admin/locations/{resource_id}:
+    patch:
+      summary: Update location
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: resource_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationCreate'
+    delete:
+      summary: Delete location
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '204':
+          description: Operation completed; no response body.
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: resource_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+  /api/v1/admin/categories:
+    get:
+      summary: List categories
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCategory'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+    post:
+      summary: Create categorie
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+  /api/v1/admin/categories/{resource_id}:
+    patch:
+      summary: Update categorie
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: resource_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+    delete:
+      summary: Delete categorie
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '204':
+          description: Operation completed; no response body.
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: resource_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+  /api/v1/admin/problem-types:
+    get:
+      summary: List problem-types
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageProblemType'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+    post:
+      summary: Create problem-type
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemType'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProblemTypeCreate'
+  /api/v1/admin/problem-types/{resource_id}:
+    patch:
+      summary: Update problem-type
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemType'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: resource_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProblemTypeCreate'
+    delete:
+      summary: Delete problem-type
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '204':
+          description: Operation completed; no response body.
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: resource_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+  /api/v1/admin/assets:
+    get:
+      summary: List assets
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '200':
+          description: Paginated results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageAsset'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: 1-based page number.
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Page size, capped at 50.
+    post:
+      summary: Create asset
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreate'
+  /api/v1/admin/assets/{resource_id}:
+    patch:
+      summary: Update asset
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: resource_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreate'
+    delete:
+      summary: Delete asset
+      description: Planned admin management endpoint.
+      tags:
+      - Admin
+      responses:
+        '204':
+          description: Operation completed; no response body.
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: resource_id
+        in: path
+        required: true
+        description: Resource identifier.
+        schema:
+          type: integer
+          minimum: 1
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          - details
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: The request could not be completed.
+            details:
+              nullable: true
+              description: Optional field-level or diagnostic details.
+    Page:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    Health:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          example: ok
+    Hostel:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    Floor:
+      type: object
+      required:
+      - id
+      - hostel_id
+      - floor_number
+      properties:
+        id:
+          type: integer
+        hostel_id:
+          type: integer
+        floor_number:
+          type: integer
+    Wing:
+      type: object
+      required:
+      - id
+      - floor_id
+      - wing_name
+      properties:
+        id:
+          type: integer
+        floor_id:
+          type: integer
+        wing_name:
+          type: string
+    Location:
+      type: object
+      required:
+      - id
+      - wing_id
+      - area_type
+      properties:
+        id:
+          type: integer
+        wing_id:
+          type: integer
+        area_type:
+          type: string
+          enum:
+          - toilet
+          - bathroom
+          - washing_machine_area
+          - cloth_drying_area
+          - corridor
+          - lift_lobby
+          - drinking_water_area
+          - room
+        description:
+          type: string
+          nullable: true
+    LocationCreate:
+      type: object
+      required:
+      - wing_id
+      - area_type
+      properties:
+        wing_id:
+          type: integer
+        area_type:
+          type: string
+        description:
+          type: string
+          maxLength: 255
+    Category:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+    CategoryCreate:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 255
+    ProblemType:
+      type: object
+      required:
+      - id
+      - category_id
+      - name
+      - requires_description
+      properties:
+        id:
+          type: integer
+        category_id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        requires_description:
+          type: boolean
+    ProblemTypeCreate:
+      type: object
+      required:
+      - category_id
+      - name
+      properties:
+        category_id:
+          type: integer
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 255
+        requires_description:
+          type: boolean
+          default: false
+    Asset:
+      type: object
+      required:
+      - id
+      - name
+      - asset_type
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        asset_type:
+          type: string
+        description:
+          type: string
+          nullable: true
+    AssetCreate:
+      type: object
+      required:
+      - hostel_id
+      - name
+      - asset_type
+      properties:
+        hostel_id:
+          type: integer
+        name:
+          type: string
+          maxLength: 120
+        asset_type:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 255
+    IssueCreate:
+      type: object
+      required:
+      - title
+      - description
+      - location_id
+      - problem_type_id
+      properties:
+        title:
+          type: string
+          minLength: 5
+          maxLength: 180
+        description:
+          type: string
+          minLength: 10
+          maxLength: 5000
+        location_id:
+          type: integer
+          minimum: 1
+        problem_type_id:
+          type: integer
+          minimum: 1
+        room_label:
+          type: string
+          maxLength: 80
+          nullable: true
+        service_date:
+          type: string
+          format: date
+          nullable: true
+        is_public:
+          type: boolean
+          default: true
+    IssuePatch:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 5
+          maxLength: 180
+        description:
+          type: string
+          minLength: 10
+          maxLength: 5000
+        location_id:
+          type: integer
+          minimum: 1
+        problem_type_id:
+          type: integer
+          minimum: 1
+        room_label:
+          type: string
+          maxLength: 80
+          nullable: true
+        service_date:
+          type: string
+          format: date
+          nullable: true
+        is_public:
+          type: boolean
+    Issue:
+      type: object
+      required:
+      - id
+      - title
+      - description
+      - location_id
+      - problem_type_id
+      - status
+      - is_public
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        location_id:
+          type: integer
+        problem_type_id:
+          type: integer
+        status:
+          type: string
+          enum:
+          - submitted
+          - acknowledged
+          - in_progress
+          - resolved
+          - closed
+          - reopened
+        is_public:
+          type: boolean
+        service_date:
+          type: string
+          format: date
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    IssuePrivate:
+      allOf:
+      - $ref: '#/components/schemas/Issue'
+      - type: object
+        properties:
+          room_label:
+            type: string
+            nullable: true
+    StaffIssue:
+      allOf:
+      - $ref: '#/components/schemas/Issue'
+      - type: object
+        required:
+        - reporter_id
+        properties:
+          reporter_id:
+            type: integer
+          room_label:
+            type: string
+            nullable: true
+    IssueUpdate:
+      type: object
+      required:
+      - id
+      - issue_id
+      - new_status
+      - created_at
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        old_status:
+          type: string
+          nullable: true
+        new_status:
+          type: string
+        comment:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    StatusUpdate:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - submitted
+          - acknowledged
+          - in_progress
+          - resolved
+          - closed
+          - reopened
+        comment:
+          type: string
+          maxLength: 2000
+          nullable: true
+        is_internal:
+          type: boolean
+          default: false
+          description: Staff-only internal note; never included in student-visible history.
+    ResolutionFeedbackIn:
+      type: object
+      required:
+      - outcome
+      properties:
+        outcome:
+          type: string
+          enum:
+          - resolved
+          - not_resolved
+          - reopen_requested
+        comment:
+          type: string
+          maxLength: 2000
+          nullable: true
+    FeedbackResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        outcome:
+          type: string
+    ConfirmationResult:
+      type: object
+      properties:
+        issue_id:
+          type: integer
+        confirmed:
+          type: boolean
+        confirmation_count:
+          type: integer
+    Notification:
+      type: object
+      required:
+      - id
+      - user_id
+      - title
+      - message
+      - is_read
+      - created_at
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        issue_id:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        message:
+          type: string
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    MarkRead:
+      type: object
+      required:
+      - is_read
+      properties:
+        is_read:
+          type: boolean
+    RegisterIn:
+      type: object
+      required:
+      - name
+      - email
+      - password
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 12
+          writeOnly: true
+        consent_accepted:
+          type: boolean
+    LoginIn:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+    GoogleLoginIn:
+      type: object
+      required:
+      - id_token
+      properties:
+        id_token:
+          type: string
+          writeOnly: true
+    AuthResult:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserPublic'
+        message:
+          type: string
+    UserPublic:
+      type: object
+      required:
+      - id
+      - name
+      - email
+      - role
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - student
+          - staff
+          - administrator
+        category_id:
+          type: integer
+          nullable: true
+    ProfilePatch:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 120
+    StaffCreate:
+      type: object
+      required:
+      - name
+      - email
+      - category_id
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        email:
+          type: string
+          format: email
+        category_id:
+          type: integer
+    EmailIn:
+      type: object
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
+    TokenIn:
+      type: object
+      required:
+      - token
+      properties:
+        token:
+          type: string
+          writeOnly: true
+    PasswordResetIn:
+      type: object
+      required:
+      - token
+      - new_password
+      properties:
+        token:
+          type: string
+          writeOnly: true
+        new_password:
+          type: string
+          minLength: 12
+          writeOnly: true
+    MessageResult:
+      type: object
+      properties:
+        message:
+          type: string
+    SmartReportIn:
+      type: object
+      required:
+      - text
+      properties:
+        text:
+          type: string
+          maxLength: 500
+    SmartReportDraft:
+      type: object
+      required:
+      - fields
+      - missing_fields
+      - needs_clarification
+      properties:
+        fields:
+          type: object
+          description: Schema-validated field values and evidence spans.
+        missing_fields:
+          type: array
+          items:
+            type: string
+        needs_clarification:
+          type: boolean
+    Analytics:
+      type: object
+      properties:
+        total_issues:
+          type: integer
+        by_status:
+          type: array
+          items:
+            type: object
+        by_category:
+          type: array
+          items:
+            type: object
+    PageHostel:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Hostel'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageFloor:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Floor'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageWing:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Wing'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageLocation:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageAsset:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asset'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageCategory:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageProblemType:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProblemType'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageIssue:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageIssueUpdate:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueUpdate'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageStaffIssue:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffIssue'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageNotification:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    PageIssuePrivate:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssuePrivate'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+  responses:
+    Error:
+      description: Standard error response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: hostelfix_session
+      description: Secure HttpOnly session cookie planned for MS-5.

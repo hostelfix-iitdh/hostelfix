@@ -1,0 +1,11 @@
+# Latest stable direct dependencies checked against PyPI on 2026-10-27.
+# HTTPX 1.0 is still a prerelease; 0.28.1 is the latest stable release.
+fastapi==0.162.0
+uvicorn[standard]==0.53.0
+SQLAlchemy==2.1.6
+alembic==1.20.1
+PyMySQL==1.2.3
+pydantic-settings==2.16.1
+pytest==9.1.1
+httpx==0.28.1
+argon2-cffi==25.1.0
