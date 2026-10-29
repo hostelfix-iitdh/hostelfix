@@ -40,7 +40,7 @@ def seed():
         if db.scalar(select(Hostel.id).limit(1)):
             print("Seed data already exists; skipping.")
             return
-        hostels = [Hostel(name="Hostel A"), Hostel(name="Hostel B")]
+        hostels = [Hostel(name="Hostel 1"), Hostel(name="Hostel 2")]
         db.add_all(hostels); db.flush()
         location_rows = []
         for hostel in hostels:
