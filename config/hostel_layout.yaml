@@ -1,8 +1,8 @@
 hostels:
-  - name: Hostel A
+  - name: Hostel 1
     floors: 8
     wings: [A, B, C, D, E]
-  - name: Hostel B
+  - name: Hostel 2
     floors: 8
     wings: [A, B, C, D, E]
 areas:
