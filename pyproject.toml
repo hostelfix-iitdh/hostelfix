@@ -1,0 +1,9 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+# The existing codebase contains compact one-line suites and semicolon-separated
+# statements. Keep those legacy style rules non-blocking while still checking
+# imports and the rest of Ruff's default correctness rules.
+ignore = ["E701", "E702"]
