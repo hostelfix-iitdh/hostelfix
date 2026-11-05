@@ -17,7 +17,7 @@ class IssuePatch(BaseModel):
     service_date: date | None = None
     is_public: bool | None = None
 class StatusUpdate(BaseModel):
-    status: str = Field(pattern="^(submitted|acknowledged|in_progress|resolved|closed|reopened)$")
+    status: str = Field(pattern="^(submitted|acknowledged|in_progress|resolved|closed|rejected|reopened)$")
     comment: str | None = Field(default=None, max_length=2000)
     is_internal: bool = False
 class ResolutionFeedbackCreate(BaseModel):
