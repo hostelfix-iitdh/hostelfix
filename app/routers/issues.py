@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, Header
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models import Issue, IssueUpdate, IssueConfirmation, IssueResolutionFeedback, Location, ProblemType, Notification, User
 from app.schemas.issue import IssueCreate, IssuePatch, IssueOut, StaffIssueOut, IssueUpdateOut, StatusUpdate, ResolutionFeedbackCreate
 from app.routers.deps import get_actor, require_role
+from app.core.taxonomy import validate_problem_location
 
 router = APIRouter(tags=["Issues"])
 @router.get("/issues")
@@ -20,12 +21,35 @@ def list_issues(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=50),
     items = query.order_by(Issue.created_at.desc(), Issue.id.desc()).offset((page - 1) * size).limit(size).all()
     return {"items": [IssueOut.model_validate(x).model_dump(mode="json") for x in items],
             "page": page, "size": size, "total": total}
+
+@router.get("/my/issues")
+def my_issues(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=50),
+              status: str | None = None, db: Session = Depends(get_db), actor: User = Depends(get_actor)):
+    query = db.query(Issue).filter(Issue.reporter_id == actor.id)
+    if status:
+        query = query.filter(Issue.status == status)
+    total = query.count()
+    items = query.order_by(Issue.created_at.desc(), Issue.id.desc()).offset((page - 1) * size).limit(size).all()
+    return {"items": [IssueOut.model_validate(x).model_dump(mode="json") for x in items],
+            "page": page, "size": size, "total": total}
+
+@router.get("/issues/{issue_id}/confirmations")
+def confirmation_summary(issue_id: int, db: Session = Depends(get_db), actor: User = Depends(get_actor)):
+    issue = db.get(Issue, issue_id)
+    if not issue or not issue.is_public:
+        raise HTTPException(404, "Issue not found")
+    query = db.query(IssueConfirmation).filter_by(issue_id=issue_id)
+    return {"issue_id": issue_id, "count": query.count(),
+            "confirmed": query.filter_by(user_id=actor.id).first() is not None,
+            "is_reporter": issue.reporter_id == actor.id}
+
 @router.post("/issues", response_model=IssueOut, status_code=201)
 def create_issue(payload: IssueCreate, actor: User = Depends(get_actor), db: Session = Depends(get_db)):
     location = db.get(Location, payload.location_id)
     if not location: raise HTTPException(422, "Unknown location_id")
     problem_type = db.get(ProblemType, payload.problem_type_id)
     if not problem_type: raise HTTPException(422, "Unknown problem_type_id")
+    validate_problem_location(problem_type, location)
     if payload.room_label and location.area_type != "room": raise HTTPException(422, "room_label is only allowed for Room-area complaints")
     if payload.service_date and problem_type.category.name != "Housekeeping": raise HTTPException(422, "service_date is only allowed for housekeeping complaints")
     issue = Issue(**payload.model_dump(), reporter_id=actor.id, status="submitted")
@@ -34,32 +58,86 @@ def create_issue(payload: IssueCreate, actor: User = Depends(get_actor), db: Ses
     db.commit(); db.refresh(issue)
     return issue
 @router.get("/issues/{issue_id}", response_model=IssueOut)
-def get_issue(issue_id: int, db: Session = Depends(get_db)):
+def get_issue(issue_id: int, db: Session = Depends(get_db), x_user_id: int | None = Header(default=None, alias="X-User-Id")):
     issue = db.get(Issue, issue_id)
-    if not issue or (not issue.is_public): raise HTTPException(404, "Issue not found")
+    if not issue:
+        raise HTTPException(404, "Issue not found")
+    if not issue.is_public:
+        actor = db.get(User, x_user_id) if x_user_id is not None else None
+        allowed = bool(actor and not actor.deleted_at and (issue.reporter_id == actor.id or actor.role == "administrator" or
+                       (actor.role == "staff" and actor.category_id == issue.problem_type.category_id)))
+        if not allowed:
+            raise HTTPException(404, "Issue not found")
     return issue
 @router.patch("/issues/{issue_id}", response_model=IssueOut)
 def patch_issue(issue_id: int, payload: IssuePatch, actor: User = Depends(get_actor), db: Session = Depends(get_db)):
     issue = db.get(Issue, issue_id)
     if not issue: raise HTTPException(404, "Issue not found")
     if issue.reporter_id != actor.id: raise HTTPException(403, "Only the reporter may edit this issue")
-    if issue.status not in ("submitted", "acknowledged"): raise HTTPException(409, "Issue can no longer be edited")
+    if issue.status != "submitted":
+        raise HTTPException(409, "A complaint can only be edited before it is acknowledged")
     data = payload.model_dump(exclude_unset=True)
-    if "location_id" in data and data["location_id"] and not db.get(Location, data["location_id"]): raise HTTPException(422, "Unknown location_id")
-    if "location_id" in data and data["location_id"] is None: raise HTTPException(422, "location_id cannot be null")
-    if "problem_type_id" in data and data["problem_type_id"] is None: raise HTTPException(422, "problem_type_id cannot be null")
-    target_location_id = data.get("location_id", issue.location_id)
-    target_location = db.get(Location, target_location_id)
-    if "problem_type_id" in data and data["problem_type_id"] and not db.get(ProblemType, data["problem_type_id"]): raise HTTPException(422, "Unknown problem_type_id")
-    if data.get("room_label") and target_location.area_type != "room": raise HTTPException(422, "room_label is only allowed for Room-area complaints")
-    target_problem_id = data.get("problem_type_id", issue.problem_type_id)
-    target_problem = db.get(ProblemType, target_problem_id)
-    if data.get("service_date") and target_problem.category.name != "Housekeeping": raise HTTPException(422, "service_date is only allowed for housekeeping complaints")
-    for key, value in data.items(): setattr(issue, key, value)
-    db.commit(); db.refresh(issue); return issue
+    if "location_id" in data and data["location_id"] is None:
+        raise HTTPException(422, "location_id cannot be null")
+    if "problem_type_id" in data and data["problem_type_id"] is None:
+        raise HTTPException(422, "problem_type_id cannot be null")
+
+    target_location = db.get(Location, data.get("location_id", issue.location_id))
+    if target_location is None:
+        raise HTTPException(422, "Unknown location_id")
+
+    target_problem = db.get(ProblemType, data.get("problem_type_id", issue.problem_type_id))
+    if target_problem is None:
+        raise HTTPException(422, "Unknown problem_type_id")
+
+    validate_problem_location(target_problem, target_location)
+
+    # Clear location/category-specific fields when an edit makes them irrelevant.
+    if target_location.area_type != "room":
+        data["room_label"] = None
+    elif "room_label" in data and data["room_label"] == "":
+        data["room_label"] = None
+
+    if target_problem.category.name != "Housekeeping":
+        data["service_date"] = None
+
+    for key, value in data.items():
+        setattr(issue, key, value)
+    db.commit()
+    db.refresh(issue)
+    return issue
+
+
+@router.delete("/issues/{issue_id}", status_code=204)
+def delete_issue(
+    issue_id: int,
+    actor: User = Depends(get_actor),
+    db: Session = Depends(get_db),
+):
+    """Allow a reporter to withdraw a complaint only before staff acknowledge it."""
+    issue = db.get(Issue, issue_id)
+    if issue is None:
+        raise HTTPException(404, "Issue not found")
+    if issue.reporter_id != actor.id:
+        raise HTTPException(403, "Only the reporter may delete this complaint")
+    if issue.status != "submitted":
+        raise HTTPException(409, "A complaint cannot be deleted after it is acknowledged")
+
+    db.delete(issue)
+    db.commit()
+    return Response(status_code=204)
 @router.get("/issues/{issue_id}/updates")
-def issue_updates(issue_id: int, page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=50), db: Session = Depends(get_db)):
-    if not db.get(Issue, issue_id): raise HTTPException(404, "Issue not found")
+def issue_updates(issue_id: int, page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=50),
+                  db: Session = Depends(get_db), x_user_id: int | None = Header(default=None, alias="X-User-Id")):
+    issue = db.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(404, "Issue not found")
+    if not issue.is_public:
+        actor = db.get(User, x_user_id) if x_user_id is not None else None
+        allowed = bool(actor and not actor.deleted_at and (issue.reporter_id == actor.id or actor.role == "administrator" or
+                       (actor.role == "staff" and actor.category_id == issue.problem_type.category_id)))
+        if not allowed:
+            raise HTTPException(404, "Issue not found")
     query = db.query(IssueUpdate).filter_by(issue_id=issue_id, is_internal=False)
     total = query.count()
     items = query.order_by(IssueUpdate.created_at, IssueUpdate.id).offset((page - 1) * size).limit(size).all()
@@ -68,6 +146,8 @@ def issue_updates(issue_id: int, page: int = Query(1, ge=1), size: int = Query(2
 def confirm_issue(issue_id: int, actor: User = Depends(get_actor), db: Session = Depends(get_db)):
     issue = db.get(Issue, issue_id)
     if not issue or not issue.is_public: raise HTTPException(404, "Issue not found")
+    if issue.reporter_id == actor.id:
+        raise HTTPException(403, "You cannot confirm your own report")
     existing = db.query(IssueConfirmation).filter_by(issue_id=issue_id, user_id=actor.id).first()
     if existing: raise HTTPException(409, "You have already confirmed this issue")
     db.add(IssueConfirmation(issue_id=issue_id, user_id=actor.id)); db.commit()
