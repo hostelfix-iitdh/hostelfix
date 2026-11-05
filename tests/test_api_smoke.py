@@ -45,3 +45,226 @@ def test_create_and_list_issue(client):
     assert "priority" not in public_issue
     assert "reporter_id" not in public_issue
     assert "room_label" not in public_issue
+
+def test_catalogs_and_profile(client):
+    location_id, problem_type_id, user_id = seed_minimal(client)
+    locations = client.get("/api/v1/locations/catalog")
+    assert locations.status_code == 200
+    assert locations.json()["items"][0]["hostel_name"] == "Test Hostel"
+    problems = client.get("/api/v1/problem-types/catalog")
+    assert problems.status_code == 200
+    assert problems.json()["items"][0]["category_name"] == "Maintenance"
+    profile = client.get("/api/v1/me", headers={"X-User-Id": str(user_id)})
+    assert profile.status_code == 200
+    assert profile.json()["role"] == "student"
+
+
+def test_my_issues_and_confirmation_summary(client):
+    location_id, problem_type_id, user_id = seed_minimal(client)
+    headers = {"X-User-Id": str(user_id)}
+    created = client.post("/api/v1/issues", headers=headers, json={
+        "title": "Leaking shower", "description": "The shower is leaking continuously.",
+        "location_id": location_id, "problem_type_id": problem_type_id, "is_public": True
+    })
+    assert created.status_code == 201
+    issue_id = created.json()["id"]
+    mine = client.get("/api/v1/my/issues", headers=headers)
+    assert mine.status_code == 200
+    assert mine.json()["total"] == 1
+    summary = client.get(f"/api/v1/issues/{issue_id}/confirmations", headers=headers)
+    assert summary.status_code == 200
+    assert summary.json()["count"] == 0
+    assert summary.json()["is_reporter"] is True
+    own_confirmation = client.post(f"/api/v1/issues/{issue_id}/confirmations", headers=headers)
+    assert own_confirmation.status_code == 403
+    assert "own report" in own_confirmation.json()["error"]["message"]
+
+    other_user = User(name="Another Student", email="another@example.test", role="student")
+    generator = client.app.dependency_overrides[get_db]()
+    db = next(generator)
+    db.add(other_user); db.commit(); other_id = other_user.id
+    try: next(generator)
+    except StopIteration: pass
+    other_headers = {"X-User-Id": str(other_id)}
+    other_summary = client.get(f"/api/v1/issues/{issue_id}/confirmations", headers=other_headers)
+    assert other_summary.status_code == 200
+    assert other_summary.json()["is_reporter"] is False
+    confirmed = client.post(f"/api/v1/issues/{issue_id}/confirmations", headers=other_headers)
+    assert confirmed.status_code == 201
+    summary = client.get(f"/api/v1/issues/{issue_id}/confirmations", headers=other_headers)
+    assert summary.json()["confirmed"] is True
+
+
+def test_admin_can_create_staff_account(client):
+    location_id, problem_type_id, student_id = seed_minimal(client)
+    generator = client.app.dependency_overrides[get_db]()
+    db = next(generator)
+    from app.models import Category, User
+    category = db.query(Category).first()
+    admin = User(name="Test Admin", email="admin@example.test", role="administrator")
+    db.add(admin)
+    db.commit()
+    admin_id = admin.id
+    try:
+        next(generator)
+    except StopIteration:
+        pass
+    response = client.post("/api/v1/admin/staff", headers={"X-User-Id": str(admin_id)}, json={
+        "name": "Maintenance Staff", "email": "maintenance@example.test", "category_id": category.id
+    })
+    assert response.status_code == 201, response.text
+    assert response.json()["role"] == "staff"
+
+def test_problem_type_location_mismatch_is_rejected(client):
+    location_id, _, user_id = seed_minimal(client)
+    generator = client.app.dependency_overrides[get_db]()
+    db = next(generator)
+    from app.models import Category, ProblemType
+    maintenance = db.query(Category).filter_by(name="Maintenance").first()
+    washing_machine = ProblemType(category_id=maintenance.id, name="Washing machine")
+    db.add(washing_machine); db.commit(); problem_id = washing_machine.id
+    try: next(generator)
+    except StopIteration: pass
+    response = client.post("/api/v1/issues", headers={"X-User-Id": str(user_id)}, json={
+        "title": "Washing machine repair required",
+        "description": "The washing machine is not working and needs repair.",
+        "location_id": location_id, "problem_type_id": problem_id, "is_public": True
+    })
+    assert response.status_code == 422
+    assert "washing machine area" in response.json()["error"]["message"].lower()
+
+def create_test_issue(client, *, user_id, location_id, problem_type_id, title="Leaking sink"):
+    """Create a valid issue for lifecycle tests and return its response."""
+    return client.post(
+        "/api/v1/issues",
+        headers={"X-User-Id": str(user_id)},
+        json={
+            "title": title,
+            "description": "The sink is leaking continuously and needs repair.",
+            "location_id": location_id,
+            "problem_type_id": problem_type_id,
+            "is_public": True,
+        },
+    )
+
+
+def test_reporter_can_edit_submitted_issue(client):
+    location_id, problem_type_id, user_id = seed_minimal(client)
+    created = create_test_issue(
+        client,
+        user_id=user_id,
+        location_id=location_id,
+        problem_type_id=problem_type_id,
+    )
+    assert created.status_code == 201, created.text
+
+    issue_id = created.json()["id"]
+    edited = client.patch(
+        f"/api/v1/issues/{issue_id}",
+        headers={"X-User-Id": str(user_id)},
+        json={
+            "title": "Bathroom sink leaking",
+            "description": "The bathroom sink has been leaking since this morning.",
+        },
+    )
+
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["title"] == "Bathroom sink leaking"
+    assert edited.json()["description"].startswith("The bathroom sink")
+
+
+def test_reporter_can_delete_submitted_issue(client):
+    location_id, problem_type_id, user_id = seed_minimal(client)
+    created = create_test_issue(
+        client,
+        user_id=user_id,
+        location_id=location_id,
+        problem_type_id=problem_type_id,
+    )
+    issue_id = created.json()["id"]
+
+    deleted = client.delete(
+        f"/api/v1/issues/{issue_id}", headers={"X-User-Id": str(user_id)}
+    )
+
+    assert deleted.status_code == 204
+    assert client.get(f"/api/v1/issues/{issue_id}").status_code == 404
+
+
+def test_complaint_cannot_be_edited_or_deleted_after_acknowledgement(client):
+    location_id, problem_type_id, student_id = seed_minimal(client)
+    created = create_test_issue(
+        client,
+        user_id=student_id,
+        location_id=location_id,
+        problem_type_id=problem_type_id,
+    )
+    issue_id = created.json()["id"]
+
+    generator = client.app.dependency_overrides[get_db]()
+    db = next(generator)
+    category = db.query(Category).filter_by(name="Maintenance").first()
+    staff_user = User(
+        name="Maintenance Staff",
+        email="staff@example.test",
+        role="staff",
+        category_id=category.id,
+    )
+    db.add(staff_user)
+    db.commit()
+    staff_id = staff_user.id
+    try:
+        next(generator)
+    except StopIteration:
+        pass
+
+    acknowledged = client.patch(
+        f"/api/v1/staff/issues/{issue_id}/status",
+        headers={"X-User-Id": str(staff_id)},
+        json={"status": "acknowledged", "comment": "Assigned for review"},
+    )
+    assert acknowledged.status_code == 200, acknowledged.text
+
+    student_headers = {"X-User-Id": str(student_id)}
+    edited = client.patch(
+        f"/api/v1/issues/{issue_id}",
+        headers=student_headers,
+        json={"title": "Changed complaint title"},
+    )
+    deleted = client.delete(f"/api/v1/issues/{issue_id}", headers=student_headers)
+
+    assert edited.status_code == 409
+    assert deleted.status_code == 409
+
+
+def test_another_user_cannot_edit_or_delete_report(client):
+    location_id, problem_type_id, user_id = seed_minimal(client)
+    created = create_test_issue(
+        client,
+        user_id=user_id,
+        location_id=location_id,
+        problem_type_id=problem_type_id,
+    )
+    issue_id = created.json()["id"]
+
+    generator = client.app.dependency_overrides[get_db]()
+    db = next(generator)
+    other_user = User(name="Other Student", email="other@example.test", role="student")
+    db.add(other_user)
+    db.commit()
+    other_id = other_user.id
+    try:
+        next(generator)
+    except StopIteration:
+        pass
+
+    headers = {"X-User-Id": str(other_id)}
+    edited = client.patch(
+        f"/api/v1/issues/{issue_id}",
+        headers=headers,
+        json={"title": "Not my complaint"},
+    )
+    deleted = client.delete(f"/api/v1/issues/{issue_id}", headers=headers)
+
+    assert edited.status_code == 403
+    assert deleted.status_code == 403
