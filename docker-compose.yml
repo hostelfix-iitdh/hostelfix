@@ -23,7 +23,22 @@ services:
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-hostelfix}:${MYSQL_PASSWORD:-hostelfix_dev_password}@db:3306/${MYSQL_DATABASE:-hostelfix}?charset=utf8mb4
       ENVIRONMENT: ${ENVIRONMENT:-development}
       SEED_ON_STARTUP: ${SEED_ON_STARTUP:-true}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:5173,http://localhost:3000}
+      SESSION_SECRET: ${SESSION_SECRET:-CHANGE_ME_SESSION_SECRET_32_CHARS_MINIMUM}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
+      AI_MAX_CHARS: ${AI_MAX_CHARS:-500}
+      AI_MAX_IMAGE_BYTES: ${AI_MAX_IMAGE_BYTES:-5242880}
+      AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-1}
+      MAIL_MODE: ${MAIL_MODE:-log}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
