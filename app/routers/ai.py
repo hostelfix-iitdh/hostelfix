@@ -1,17 +1,27 @@
 import asyncio
 import re
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
+
 from app.core.config import settings
+from app.core.rate_limit import client_key, rate_limiter
 from app.db.session import get_db
-from app.models import User, Hostel, Floor, Wing, Location, Asset, Category, ProblemType
+from app.models import Asset, Category, Floor, Hostel, Location, ProblemType, User, Wing
 from app.routers.deps import get_actor
-from app.services.ai import provider, SmartReportResult, FieldSuggestion
-from app.core.rate_limit import rate_limiter, client_key
+from app.services.ai import SmartReportResult, provider
 
 router = APIRouter(prefix="/issues", tags=["SmartReport AI"])
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif", "image/avif"}
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/heic",
+    "image/heif",
+    "image/avif",
+}
 
 
 def _options(db: Session) -> dict:
@@ -24,12 +34,19 @@ def _options(db: Session) -> dict:
     problems = db.query(ProblemType).order_by(ProblemType.category_id, ProblemType.name).all()
     return {
         "hostels": [{"id": x.id, "name": x.name} for x in hostels],
-        "floors": [{"id": x.id, "hostel_id": x.hostel_id, "floor_number": x.floor_number} for x in floors],
+        "floors": [
+            {"id": x.id, "hostel_id": x.hostel_id, "floor_number": x.floor_number} for x in floors
+        ],
         "wings": [{"id": x.id, "floor_id": x.floor_id, "wing_name": x.wing_name} for x in wings],
         "areas": [{"id": x.id, "wing_id": x.wing_id, "area_type": x.area_type} for x in locations],
-        "assets": [{"id": x.id, "hostel_id": x.hostel_id, "name": x.name, "asset_type": x.asset_type} for x in assets],
+        "assets": [
+            {"id": x.id, "hostel_id": x.hostel_id, "name": x.name, "asset_type": x.asset_type}
+            for x in assets
+        ],
         "categories": [{"id": x.id, "name": x.name} for x in categories],
-        "problem_types": [{"id": x.id, "category_id": x.category_id, "name": x.name} for x in problems],
+        "problem_types": [
+            {"id": x.id, "category_id": x.category_id, "name": x.name} for x in problems
+        ],
     }
 
 
@@ -53,21 +70,42 @@ def _extract_from_text(text: str, options: dict, out: dict) -> None:
     # Hostel
     for h in options["hostels"]:
         aliases = [h["name"].lower(), h["name"].lower().replace("hostel ", "h")]
-        m = next((re.search(rf"\b{re.escape(alias)}\b", low) for alias in aliases if re.search(rf"\b{re.escape(alias)}\b", low)), None)
+        m = next(
+            (
+                re.search(rf"\b{re.escape(alias)}\b", low)
+                for alias in aliases
+                if re.search(rf"\b{re.escape(alias)}\b", low)
+            ),
+            None,
+        )
         if m:
-            _set_suggestion(out, "hostel", h["name"], text[m.start():m.end()])
+            _set_suggestion(out, "hostel", h["name"], text[m.start() : m.end()])
             break
     # Floor: ordinal, word ordinal, or explicit numeric floor.
-    nums = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6, "seventh": 7, "eighth": 8}
-    floor_re = re.compile(r"\b(?:(\d{1,2})(?:st|nd|rd|th)?|(" + "|".join(nums) + r"))\s*(?:floor|fl)\b|\bfloor\s*(\d{1,2})\b", re.I)
+    nums = {
+        "first": 1,
+        "second": 2,
+        "third": 3,
+        "fourth": 4,
+        "fifth": 5,
+        "sixth": 6,
+        "seventh": 7,
+        "eighth": 8,
+    }
+    floor_re = re.compile(
+        r"\b(?:(\d{1,2})(?:st|nd|rd|th)?|("
+        + "|".join(nums)
+        + r"))\s*(?:floor|fl)\b|\bfloor\s*(\d{1,2})\b",
+        re.IGNORECASE,
+    )
     m = floor_re.search(text)
     if m:
         value = int(m.group(1) or nums.get((m.group(2) or "").lower()) or m.group(3))
         if any(int(x["floor_number"]) == value for x in options["floors"]):
             _set_suggestion(out, "floor", str(value), m.group(0))
     # Wing
-    m = re.search(r"\b(?:wing\s*)?([A-E])\s*(?:wing)?\b", text, re.I)
-    if m and re.search(r"\bwing\b", m.group(0), re.I):
+    m = re.search(r"\b(?:wing\s*)?([A-E])\s*(?:wing)?\b", text, re.IGNORECASE)
+    if m and re.search(r"\bwing\b", m.group(0), re.IGNORECASE):
         _set_suggestion(out, "wing", m.group(1).upper(), m.group(0))
     # Area aliases. Longest aliases first.
     area_aliases = {
@@ -86,14 +124,14 @@ def _extract_from_text(text: str, options: dict, out: dict) -> None:
             _set_suggestion(out, "area", area, found)
             break
     # Room label such as room 412.
-    m = re.search(r"\b(?:room|rm)\s*(?:no\.?\s*)?([A-Za-z0-9-]{2,10})\b", text, re.I)
+    m = re.search(r"\b(?:room|rm)\s*(?:no\.?\s*)?([A-Za-z0-9-]{2,10})\b", text, re.IGNORECASE)
     if m:
         _set_suggestion(out, "room_label", m.group(1), m.group(0))
     # Text asset references. Exact DB assets are preferred.
     for asset in options["assets"]:
         m = re.search(rf"\b{re.escape(asset['name'].lower())}\b", low)
         if m:
-            _set_suggestion(out, "asset", asset["name"], text[m.start():m.end()])
+            _set_suggestion(out, "asset", asset["name"], text[m.start() : m.end()])
             break
 
 
@@ -107,14 +145,21 @@ def _postprocess(result: SmartReportResult, options: dict, text: str) -> dict:
         ("asset", options["assets"], "name"),
     ]:
         suggestion = out[field]
-        if not suggestion.get("value") or (field in {"hostel", "floor", "wing", "area", "asset"} and not _evidence(suggestion.get("value"), suggestion.get("span"), text)):
+        if not suggestion.get("value") or (
+            field in {"hostel", "floor", "wing", "area", "asset"}
+            and not _evidence(suggestion.get("value"), suggestion.get("span"), text)
+        ):
             suggestion["value"] = None
             suggestion["span"] = None
             suggestion["confidence"] = 0
         else:
             if field == "floor":
                 try:
-                    suggestion["value"] = str(next(x for x in items if str(x["floor_number"]) == str(suggestion["value"]))["floor_number"])
+                    suggestion["value"] = str(
+                        next(
+                            x for x in items if str(x["floor_number"]) == str(suggestion["value"])
+                        )["floor_number"]
+                    )
                 except StopIteration:
                     suggestion["value"] = None
             elif field == "wing":
@@ -122,13 +167,33 @@ def _postprocess(result: SmartReportResult, options: dict, text: str) -> dict:
     _extract_from_text(text, options, out)
 
     observation = _norm(result.image_observation)
-    if "washing machine" in observation and any(w in observation for w in ("broken", "damaged", "not working", "fault", "leak")):
-        out["category"] = {"value": "Maintenance", "span": result.image_observation, "confidence": 0.95}
-        out["problem_type"] = {"value": "Washing machine", "span": result.image_observation, "confidence": 0.95}
+    if "washing machine" in observation and any(
+        w in observation for w in ("broken", "damaged", "not working", "fault", "leak")
+    ):
+        out["category"] = {
+            "value": "Maintenance",
+            "span": result.image_observation,
+            "confidence": 0.95,
+        }
+        out["problem_type"] = {
+            "value": "Washing machine",
+            "span": result.image_observation,
+            "confidence": 0.95,
+        }
         out["title"] = out["title"] or "Washing machine needs repair"
-    if ("lift" in observation or "elevator" in observation) and any(w in observation for w in ("stuck", "broken", "not working", "fault")):
-        out["category"] = {"value": "Maintenance", "span": result.image_observation, "confidence": 0.95}
-        out["problem_type"] = {"value": "Lift malfunction", "span": result.image_observation, "confidence": 0.95}
+    if ("lift" in observation or "elevator" in observation) and any(
+        w in observation for w in ("stuck", "broken", "not working", "fault")
+    ):
+        out["category"] = {
+            "value": "Maintenance",
+            "span": result.image_observation,
+            "confidence": 0.95,
+        }
+        out["problem_type"] = {
+            "value": "Lift malfunction",
+            "span": result.image_observation,
+            "confidence": 0.95,
+        }
         out["title"] = out["title"] or "Lift malfunction"
 
     if not out.get("title"):
@@ -154,14 +219,62 @@ def _local_fallback(text: str, options: dict) -> SmartReportResult:
     _extract_from_text(text, options, data)
     low = text.lower()
     rules = [
-        (r"washing machine|washer", r"not working|broken|damaged|leak|repair|out of order", "Maintenance", "Washing machine", "Washing machine needs repair"),
-        (r"lift|elevator", r"stuck|not working|broken|malfunction|fault", "Maintenance", "Lift malfunction", "Lift malfunction"),
-        (r"corridor|hallway", r"dirty|unclean|cleaning|dusty", "Housekeeping", "Corridor cleaning", "Corridor cleaning required"),
-        (r"washing machine area|washer area", r"dirty|unclean|cleaning", "Housekeeping", "Washing machine area cleaning", "Washing machine area cleaning required"),
-        (r"lift lobby|elevator lobby", r"dirty|unclean|cleaning", "Housekeeping", "Unclean lift lobby", "Lift lobby cleaning required"),
-        (r"toilet|washroom", r"dirty|unclean|cleaning", "Housekeeping", "Toilet cleaning", "Toilet cleaning required"),
-        (r"bathroom|shower", r"dirty|unclean|cleaning", "Housekeeping", "Bathroom cleaning", "Bathroom cleaning required"),
-        (r"tap|faucet|pipe|shower|leak", r"leak|leaking|dripping|broken", "Maintenance", "Plumbing", "Plumbing leak"),
+        (
+            r"washing machine|washer",
+            r"not working|broken|damaged|leak|repair|out of order",
+            "Maintenance",
+            "Washing machine",
+            "Washing machine needs repair",
+        ),
+        (
+            r"lift|elevator",
+            r"stuck|not working|broken|malfunction|fault",
+            "Maintenance",
+            "Lift malfunction",
+            "Lift malfunction",
+        ),
+        (
+            r"corridor|hallway",
+            r"dirty|unclean|cleaning|dusty",
+            "Housekeeping",
+            "Corridor cleaning",
+            "Corridor cleaning required",
+        ),
+        (
+            r"washing machine area|washer area",
+            r"dirty|unclean|cleaning",
+            "Housekeeping",
+            "Washing machine area cleaning",
+            "Washing machine area cleaning required",
+        ),
+        (
+            r"lift lobby|elevator lobby",
+            r"dirty|unclean|cleaning",
+            "Housekeeping",
+            "Unclean lift lobby",
+            "Lift lobby cleaning required",
+        ),
+        (
+            r"toilet|washroom",
+            r"dirty|unclean|cleaning",
+            "Housekeeping",
+            "Toilet cleaning",
+            "Toilet cleaning required",
+        ),
+        (
+            r"bathroom|shower",
+            r"dirty|unclean|cleaning",
+            "Housekeeping",
+            "Bathroom cleaning",
+            "Bathroom cleaning required",
+        ),
+        (
+            r"tap|faucet|pipe|shower|leak",
+            r"leak|leaking|dripping|broken",
+            "Maintenance",
+            "Plumbing",
+            "Plumbing leak",
+        ),
     ]
     for obj, fault, category, problem, title in rules:
         if re.search(obj, low) and re.search(fault, low):
@@ -173,8 +286,19 @@ def _local_fallback(text: str, options: dict) -> SmartReportResult:
 
 
 @router.post("/draft")
-async def smart_draft(request: Request, text: str = Form(default=""), image: UploadFile | None = File(default=None), actor: User = Depends(get_actor), db: Session = Depends(get_db)):
-    rate_limiter.check(client_key(request, "smartreport"), 30, 3600, "Too many SmartReport requests from this address. Try again later.")
+async def smart_draft(
+    request: Request,
+    text: str = Form(default=""),
+    image: UploadFile | None = File(default=None),
+    actor: User = Depends(get_actor),
+    db: Session = Depends(get_db),
+):
+    rate_limiter.check(
+        client_key(request, "smartreport"),
+        30,
+        3600,
+        "Too many SmartReport requests from this address. Try again later.",
+    )
     if actor.role != "student":
         raise HTTPException(403, "SmartReport is available to students only")
     if not text.strip() and not image:
@@ -193,12 +317,17 @@ async def smart_draft(request: Request, text: str = Form(default=""), image: Upl
     today = date.today()
     locked_actor = db.query(User).filter(User.id == actor.id).with_for_update().one()
     if locked_actor.smart_report_last_used_on == today:
-        raise HTTPException(429, "Daily SmartReport limit reached. You can use SmartReport again tomorrow.")
+        raise HTTPException(
+            429, "Daily SmartReport limit reached. You can use SmartReport again tomorrow."
+        )
     locked_actor.smart_report_last_used_on = today
     db.commit()
     options = _options(db)
     try:
-        result = await asyncio.wait_for(provider.draft(text.strip(), options, data, image.content_type if image else None), timeout=settings.ai_timeout_seconds)
+        result = await asyncio.wait_for(
+            provider.draft(text.strip(), options, data, image.content_type if image else None),
+            timeout=settings.ai_timeout_seconds,
+        )
         message = "SmartReport draft ready. Review the location and all suggested fields before submitting."
     except Exception as exc:
         logger = __import__("logging").getLogger(__name__)

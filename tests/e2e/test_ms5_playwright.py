@@ -1,7 +1,8 @@
 import os
 
 import pytest
-from playwright.sync_api import Error as PlaywrightError, sync_playwright
+from playwright.sync_api import Error as PlaywrightError
+from playwright.sync_api import sync_playwright
 
 pytestmark = pytest.mark.e2e
 BASE_URL = os.getenv("HOSTELFIX_URL", "http://localhost:8080")
