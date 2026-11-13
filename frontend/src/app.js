@@ -22,18 +22,44 @@ const navItems = () => selectedRole()==="administrator" ? [{id:"staff",label:"St
 
 async function api(path, options={}) {
   const headers = {Accept:"application/json", ...(options.headers||{})};
-  if (options.body && !headers["Content-Type"]) headers["Content-Type"]="application/json";
-  if (options.auth !== false) headers["X-User-Id"] = String(state.userId);
-  const response = await fetch(`${API}${path}`, {...options, headers});
+  if (options.body && !(options.body instanceof FormData) && !headers["Content-Type"]) headers["Content-Type"]="application/json";
+  if (!["GET","HEAD"].includes((options.method||"GET").toUpperCase()) && !path.startsWith("/auth/")) {
+    const csrf = getCookie("hf_csrf"); if (csrf) headers["X-CSRF-Token"] = csrf;
+  }
+  const response = await fetch(`${API}${path}`, {...options, headers, credentials:"include"});
   if (response.status===204) return null;
   let body={}; try { body=await response.json(); } catch {}
-  if(!response.ok){const detail=body?.error?.message || body?.detail || body?.message || `Request failed (${response.status})`;throw new Error(typeof detail==="string"?detail:"The request could not be completed.");}
+  if(!response.ok){
+    const detail=body?.error?.message || body?.detail || body?.message || `Request failed (${response.status})`;
+    const field = body?.error?.details?.[0]?.field;
+    const message = typeof detail === "string" ? detail : "The request could not be completed.";
+    throw new Error(field && body?.error?.code === "VALIDATION_ERROR" ? `${field}: ${message}` : message);
+  }
   return body;
+}
+function getCookie(name){return document.cookie.split("; ").find(x=>x.startsWith(name+"="))?.split("=").slice(1).join("=")||"";}
+async function ensureCsrf(){try{await api("/auth/csrf",{auth:false});}catch(e){console.warn("CSRF bootstrap failed",e);}}
+async function loadBaseData() {
+  // Load all reporting/catalog data in one place. Several pages (Report,
+  // Community Issues and the Admin dashboard) depend on these arrays for
+  // labels and filters. Keep this independent from any single page so a
+  // fresh login/reload cannot leave the UI with an empty catalog.
+  const [hostels, categories, problemTypes, locations] = await Promise.all([
+    api("/hostels?size=50", {auth:false}),
+    api("/categories?size=50", {auth:false}),
+    api("/problem-types/catalog", {auth:false}),
+    api("/locations/catalog", {auth:false}),
+  ]);
+  state.hostels = hostels.items || [];
+  state.categories = categories.items || [];
+  state.problemTypes = problemTypes.items || [];
+  state.locations = locations.items || [];
+  return state;
 }
 function toast(message, type="") {
   const region=$("#toast-region"); const node=document.createElement("div"); node.className=`toast ${type}`; node.textContent=message; region.appendChild(node); setTimeout(()=>node.remove(),4200);
 }
-function setPage(page) { state.page=page; state.modal=null; render(); if(page==="dashboard") loadDashboard(); if(page==="report") initReportForm(); if(page==="community") loadCommunity(); if(page==="my-reports") loadMyReports(); if(page==="profile") loadProfile(); if(page==="staff") loadStaffQueue(); if(page==="admin") loadAdmin(); }
+function setPage(page) { state.page=page; state.modal=null; render(); if(page==="login")initGoogle(); if(page==="dashboard") loadDashboard(); if(page==="report") initReportForm(); if(page==="community") loadCommunity(); if(page==="my-reports") loadMyReports(); if(page==="profile") loadProfile(); if(page==="staff") loadStaffQueue(); if(page==="admin") loadAdmin(); }
 function header(active) {
   const items=navItems();
   return `<header class="topbar"><a class="brand" href="#dashboard" data-page="${isStaff()?"staff":"dashboard"}">HostelFix</a>
@@ -44,34 +70,59 @@ function header(active) {
 }
 function pageFrame(active, content) { return `${header(active)}<main class="page-main">${content}</main><footer class="footer"><span>HostelFix · IIT Dharwad</span><span>Development demo · Synthetic data only · Never share personal information in public reports</span></footer>${state.modal?renderModal():""}`; }
 function loginView() {
-  const options = state.demoUsers;
-  const selectedUser = options.find(user => Number(user.id) === Number(state.userId)) || options.find(user => user.role === "student") || options[0];
-  if (selectedUser && Number(selectedUser.id) !== Number(state.userId)) state.userId = Number(selectedUser.id);
-  return `<div class="login-page"><header class="login-header"><a class="brand" href="#">HostelFix</a><span class="user-name">IIT Dharwad</span></header><main class="login-main"><section class="login-card" aria-labelledby="login-title"><div><p class="eyebrow">IIT DHARWAD · HOSTEL SERVICES</p><h1 id="login-title">Sign in</h1></div><p class="intro">Use your <strong>iitdh.ac.in</strong> account to report and track hostel issues.</p>
-    <form id="login-form" class="stack"><div class="field"><label for="login-email">College email</label><input class="input" id="login-email" type="email" required placeholder="you@iitdh.ac.in" value="${esc(selectedUser?.email || "") }"></div><div class="field"><label for="login-password">Password</label><input class="input" id="login-password" type="password" required placeholder="Enter your password" value="HostelFix-Demo-2026!"></div><div class="row spread"><span></span><a href="#reset" data-action="reset-password" class="text-link">Forgot password?</a></div><button class="btn" type="submit">Sign in</button></form>
-    <div class="or-divider">or</div><button class="btn btn-google" data-action="google-signin" type="button"><span style="font-weight:800">G</span> Continue with Google</button>
-    <div class="login-footer">New to HostelFix? <a href="#register" data-action="register">Create account</a><br><a href="#staff-login" data-action="staff-login">Staff sign in</a> &nbsp;·&nbsp; <a href="#admin-login" data-action="admin-login">Administrator sign in</a></div>
-    <div class="demo-panel"><label for="demo-user">Development demo identity</label><select class="select" id="demo-user">${options.map(user=>`<option value="${user.id}" ${Number(user.id)===Number(state.userId)?"selected":""}>${esc(user.name)} · ${esc(user.role)} (${esc(user.email)})</option>`).join("")}</select><p class="small" style="margin:8px 0 0;color:#1e3a8a;line-height:1.5">The current backend uses a development identity header, not production authentication. Choose a seeded demo role to explore role-specific screens.</p></div>
-    </section></main></div>${state.modal?renderModal():""}`;
+  return `<div class="login-page"><header class="login-header"><a class="brand" href="#">HostelFix</a><span class="user-name">IIT Dharwad</span></header><main class="login-main"><section class="login-card" aria-labelledby="login-title"><p class="eyebrow">IIT DHARWAD · HOSTEL SERVICES</p><h1 id="login-title">Student sign in</h1><p class="intro">Students sign in using their verified <strong>@iitdh.ac.in</strong> Google account.</p>
+    <div id="google-button" style="min-height:44px"></div><p id="google-status" class="small muted" style="margin:0"></p>
+    <div class="login-footer" style="margin-top:18px"><span class="small muted">HostelFix staff or administrator?</span> <a href="#staff-login" data-action="staff-login">Staff / Administrator login</a></div>
+    </section></main></div>`;
+}
+function roleLoginView() {
+  return `<div class="login-page"><header class="login-header"><a class="brand" href="#" data-action="back-to-login">HostelFix</a><span class="user-name">IIT Dharwad</span></header><main class="login-main"><section class="login-card" aria-labelledby="role-login-title"><p class="eyebrow">HOSTELFIX STAFF ACCESS</p><h1 id="role-login-title">Staff / Administrator sign in</h1><p class="intro">Use your HostelFix staff or administrator credentials.</p><form id="role-login-form" class="stack"><div class="field"><label for="role-login-email">College email</label><input class="input" id="role-login-email" type="email" required autocomplete="username"></div><div class="field"><label for="role-login-password">Password</label><input class="input" id="role-login-password" type="password" required autocomplete="current-password"></div><button class="btn" type="submit">Sign in</button></form><div class="login-footer"><a href="#login" data-action="back-to-login">← Student sign in</a></div></section></main></div>`;
 }
 function authPlaceholderView(kind) {
-  const isSignup = kind === "signup";
-  const isGoogle = kind === "google-signin";
-  const title = isSignup ? "Create your account" : isGoogle ? "Continue with Google" : "Reset your password";
-  const description = isSignup
-    ? "Student registration is planned for the next milestone. These fields are a preview only and will not create an account."
-    : isGoogle
-      ? "Google authentication is planned for the next milestone. No Google account is connected and this page will not sign you in."
-      : "Password reset is planned for the next milestone. This preview will not send an email or change a password.";
-  return `<div class="login-page"><header class="login-header"><a class="brand" href="#" data-action="back-to-login">HostelFix</a><span class="user-name">IIT Dharwad</span></header><main class="login-main"><section class="login-card" aria-labelledby="auth-placeholder-title"><p class="eyebrow">NEXT MILESTONE · PREVIEW</p><h1 id="auth-placeholder-title">${title}</h1><p class="intro">${description}</p>
-    ${isSignup ? `<div class="stack" aria-label="Registration preview"><div class="field"><label>Full name</label><input class="input" placeholder="Your full name" disabled></div><div class="field"><label>College email</label><input class="input" type="email" placeholder="you@iitdh.ac.in" disabled></div><div class="field"><label>Password</label><input class="input" type="password" placeholder="Create a password" disabled></div><button class="btn" type="button" disabled>Registration coming next milestone</button></div>` : isGoogle ? `<div class="google-preview"><div class="google-preview-mark">G</div><strong>Google account selection</strong><p class="small muted">The real Google account chooser will be integrated in a future milestone.</p><button class="btn btn-secondary" type="button" disabled>Google sign-in unavailable</button></div>` : `<div class="stack"><div class="field"><label>College email</label><input class="input" type="email" placeholder="you@iitdh.ac.in" disabled></div><button class="btn" type="button" disabled>Password reset coming next milestone</button></div>`}
-    <div class="login-footer"><a href="#login" data-action="back-to-login">← Back to sign in</a></div></section></main></div>`;
+  if(kind === "signup") return `<div class="login-page"><header class="login-header"><a class="brand" href="#" data-action="back-to-login">HostelFix</a><span class="user-name">IIT Dharwad</span></header><main class="login-main"><section class="login-card"><p class="eyebrow">STUDENT REGISTRATION</p><h1>Create account</h1><p class="intro">Registration is restricted to an exact <strong>@iitdh.ac.in</strong> address. A verification link will be sent before you can sign in.</p><form id="register-form" class="stack"><div class="field"><label for="reg-name">Full name</label><input class="input" id="reg-name" required maxlength="120"></div><div class="field"><label for="reg-email">College email</label><input class="input" id="reg-email" type="email" required placeholder="you@iitdh.ac.in"></div><div class="field"><label for="reg-password">Password</label><input class="input" id="reg-password" type="password" minlength="5" required></div><label class="check"><input id="reg-consent" type="checkbox" required> I consent to HostelFix storing the minimum account data needed to provide the service.</label><button class="btn" type="submit">Create account</button></form><div id="verification-link" style="margin-top:14px"></div><div class="login-footer"><a href="#login" data-action="back-to-login">← Back to sign in</a></div></section></main></div>`;
+  if(kind === "reset-password") return `<div class="login-page"><header class="login-header"><a class="brand" href="#" data-action="back-to-login">HostelFix</a><span class="user-name">IIT Dharwad</span></header><main class="login-main"><section class="login-card"><p class="eyebrow">PASSWORD RESET</p><h1>Forgot password?</h1><p class="intro">Enter your college email. We will show the same response whether or not an account exists.</p><form id="forgot-form" class="stack"><div class="field"><label for="forgot-email">College email</label><input class="input" id="forgot-email" type="email" required placeholder="you@iitdh.ac.in"></div><button class="btn" type="submit">Send reset link</button></form><div class="login-footer"><a href="#login" data-action="back-to-login">← Back to sign in</a></div></section></main></div>`;
+  if(kind === "set-password") return `<div class="login-page"><header class="login-header"><a class="brand" href="#" data-action="back-to-login">HostelFix</a><span class="user-name">IIT Dharwad</span></header><main class="login-main"><section class="login-card"><p class="eyebrow">STAFF ACCOUNT SETUP</p><h1>Set your password</h1><p class="intro">Choose a password for your HostelFix staff account. This one-time link expires in 24 hours.</p><form id="set-password-form" class="stack"><div class="field"><label for="set-password">New password</label><input class="input" id="set-password" type="password" minlength="5" required></div><button class="btn" type="submit">Set password</button></form></section></main></div>`;
+  return `<div class="login-page"><header class="login-header"><a class="brand" href="#" data-action="back-to-login">HostelFix</a><span class="user-name">IIT Dharwad</span></header><main class="login-main"><section class="login-card"><p class="eyebrow">SET NEW PASSWORD</p><h1>Choose a new password</h1><form id="reset-form" class="stack"><div class="field"><label for="new-password">New password</label><input class="input" id="new-password" type="password" minlength="5" required></div><button class="btn" type="submit">Reset password</button></form></section></main></div>`;
 }
-
+async function login(){
+  try { await ensureCsrf(); state.user=await api("/auth/login",{method:"POST",body:JSON.stringify({email:$("#login-email").value.trim(),password:$("#login-password").value})}); state.loggedIn=true;state.userId=Number(state.user.id);localStorage.setItem("hf.loggedIn","true");localStorage.setItem("hf.userId",String(state.user.id));state.page=state.user.role==="administrator"?"admin":state.user.role==="staff"?"staff":"dashboard"; await loadBaseData();render(); if(state.page==="dashboard")loadDashboard();else if(state.page==="staff")loadStaffQueue();else loadAdmin(); }
+  catch(e){toast(e.message,"error");}
+}
+async function initGoogle(attempt=0){
+  const target=$("#google-button");
+  if(!target) return;
+  if(!window.google?.accounts?.id){
+    if(attempt < 20) return setTimeout(()=>initGoogle(attempt+1),250);
+    $("#google-status").textContent="Google sign-in could not load. Check your internet connection or the Google Identity Services script.";
+    return;
+  }
+  try {
+    const cfg=await api("/auth/config",{auth:false});
+    if(!cfg.client_id){
+      $("#google-status").textContent="Google sign-in is not configured. Add GOOGLE_CLIENT_ID to .env and restart Docker.";
+      return;
+    }
+    window.google.accounts.id.initialize({
+      client_id:cfg.client_id,
+      callback:async response=>{
+        try{
+          state.user=await api("/auth/google",{method:"POST",body:JSON.stringify({credential:response.credential})});
+          state.loggedIn=true;state.userId=Number(state.user.id);localStorage.setItem("hf.loggedIn","true");localStorage.setItem("hf.userId",String(state.user.id));
+          state.page=state.user.role==="administrator"?"admin":state.user.role==="staff"?"staff":"dashboard";
+          await loadBaseData(); render();
+          if(state.page==="dashboard")loadDashboard(); else if(state.page==="staff")loadStaffQueue(); else if(state.page==="admin")loadAdmin();
+        }catch(e){toast(e.message,"error");}
+      }
+    });
+    target.innerHTML="";
+    window.google.accounts.id.renderButton(target,{theme:"outline",size:"large",width:360,text:"continue_with",shape:"rectangular"});
+  } catch(e){$("#google-status").textContent=e.message;}
+}
 function render() {
   const app=$("#app");
-  if(["signup","google-signin","reset-password"].includes(state.page)) { app.innerHTML=authPlaceholderView(state.page); return; }
-  if(!state.loggedIn || state.page==="login") { app.innerHTML=loginView(); return; }
+  if(state.page==="staff-login" || state.page==="admin-login") { app.innerHTML=roleLoginView(); return; }
+  if(state.page==="set-password") { app.innerHTML=authPlaceholderView("set-password"); return; }
+  if(!state.loggedIn || state.page==="login") { app.innerHTML=loginView(); initGoogle(); return; }
   let content="";
   if(state.page==="dashboard") content=dashboardView();
   else if(state.page==="report") content=reportView();
@@ -105,10 +156,10 @@ function dashboardView() {
 function reportView() {
   return `<div class="page-heading"><div><p class="eyebrow">HELP US FIX IT</p><h1>Report an Issue</h1><p>Tell us what happened and where. Please avoid including personal or sensitive information.</p></div></div>
   <div class="grid" style="grid-template-columns:minmax(0,1.4fr) minmax(290px,.8fr);align-items:start"><section class="card card-pad"><div class="section-head"><div><h2>Describe the issue</h2><p>SmartReport can help organise your description into an editable draft.</p></div></div>
-  <div class="field"><label for="smart-description">SmartReport</label><textarea class="textarea" id="smart-description" placeholder="Example: The tap in the fourth-floor bathroom of Hostel 1, Wing B has been leaking since yesterday."></textarea><div class="row spread wrap"><span class="hint">AI suggestions are optional. Review every field before submitting.</span><button class="btn btn-secondary btn-small" type="button" data-action="smart-draft">Draft with SmartReport</button></div></div><div id="smart-message" style="margin-top:12px"></div><div class="divider"></div>
+  <div class="field"><label for="smart-description">SmartReport</label><textarea class="textarea" id="smart-description" placeholder="Example: The tap in the fourth-floor bathroom of Hostel 1, Wing B has been leaking since yesterday."></textarea><div class="field" style="margin-top:10px"><label for="smart-image">Optional image</label><input class="input" id="smart-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif,image/avif"><span class="hint">Add a photo of the faulty asset. For example, a damaged washing machine or a stuck lift.</span></div><div class="row spread wrap"><span class="hint">AI suggestions are optional. Review every field before submitting.</span><button class="btn btn-secondary btn-small" type="button" data-action="smart-draft">Draft with SmartReport</button></div></div><div id="smart-message" style="margin-top:12px"></div><div class="divider"></div>
   <form id="issue-form" class="stack"><div class="form-grid"><div class="field"><label for="hostel-select">Hostel <span class="subtle">*</span></label><select class="select" id="hostel-select" name="hostel" required><option value="">Loading hostels…</option></select></div><div class="field"><label for="floor-select">Floor <span class="subtle">*</span></label><select class="select" id="floor-select" name="floor" required disabled><option value="">Select hostel first</option></select></div><div class="field"><label for="wing-select">Wing <span class="subtle">*</span></label><select class="select" id="wing-select" name="wing" required disabled><option value="">Select floor first</option></select></div><div class="field"><label for="area-select">Area <span class="subtle">*</span></label><select class="select" id="area-select" name="location" required disabled><option value="">Select wing first</option></select></div><div class="field hide" id="room-field"><label for="room-label">Room label</label><input class="input" id="room-label" maxlength="80" placeholder="e.g. 412"><span class="hint">Only needed when reporting an individual room.</span></div><div class="field hide" id="asset-field"><label for="asset-select">Asset / equipment</label><select class="select" id="asset-select"><option value="">No specific asset</option></select></div><div class="field"><label for="category-select">Category <span class="subtle">*</span></label><select class="select" id="category-select" required><option value="">Loading categories…</option></select></div><div class="field"><label for="problem-select">Problem type <span class="subtle">*</span></label><select class="select" id="problem-select" required disabled><option value="">Select category first</option></select></div><div class="field hide" id="service-date-field"><label for="service-date">Service date</label><input class="input" id="service-date" type="date"><span class="hint">For housekeeping reports, if relevant.</span></div><div class="field full"><label for="issue-title">Short title <span class="subtle">*</span></label><input class="input" id="issue-title" required minlength="5" maxlength="180" placeholder="e.g. Leaking tap in bathroom"></div><div class="field full"><label for="issue-description">Description <span class="subtle">*</span></label><textarea class="textarea" id="issue-description" required minlength="10" maxlength="5000" placeholder="Describe the problem, when you noticed it, and how it affects the area."></textarea><span class="hint">10–5,000 characters. Do not include names, phone numbers or other private details.</span></div></div>
   <label class="checkbox-row"><input id="issue-public" type="checkbox" checked><span>Show this report in Community Issues. Your identity will not be displayed publicly.</span></label><div class="row spread wrap"><span class="small muted">Fields marked * are required.</span><button class="btn" type="submit">Review and submit →</button></div></form></section>
-  <aside class="stack"><section class="card card-pad"><h2 class="card-title">Before you submit</h2><div class="stack" style="margin-top:16px;gap:14px"><div class="row" style="align-items:flex-start"><span class="metric-icon">⌖</span><div><strong style="font-size:13px">Choose the exact location</strong><p class="card-subtitle">Select hostel, floor, wing and area so the right team can find the issue.</p></div></div><div class="row" style="align-items:flex-start"><span class="metric-icon">✎</span><div><strong style="font-size:13px">Be specific</strong><p class="card-subtitle">A clear description helps staff understand what needs attention.</p></div></div><div class="row" style="align-items:flex-start"><span class="metric-icon">◷</span><div><strong style="font-size:13px">Follow the timeline</strong><p class="card-subtitle">After submitting, track status changes from My Reports.</p></div></div></div></section><section class="alert warning"><strong>SmartReport status</strong><br>The AI provider is not configured in this development build. The button can prepare an editable draft and suggest a category/problem for common symptoms; it does not submit anything automatically.</section></aside></div>`;
+  <aside class="stack"><section class="card card-pad"><h2 class="card-title">Before you submit</h2><div class="stack" style="margin-top:16px;gap:14px"><div class="row" style="align-items:flex-start"><span class="metric-icon">⌖</span><div><strong style="font-size:13px">Choose the exact location</strong><p class="card-subtitle">Select hostel, floor, wing and area so the right team can find the issue.</p></div></div><div class="row" style="align-items:flex-start"><span class="metric-icon">✎</span><div><strong style="font-size:13px">Be specific</strong><p class="card-subtitle">A clear description helps staff understand what needs attention.</p></div></div><div class="row" style="align-items:flex-start"><span class="metric-icon">◷</span><div><strong style="font-size:13px">Follow the timeline</strong><p class="card-subtitle">After submitting, track status changes from My Reports.</p></div></div></div></section><section class="alert warning"><strong>SmartReport</strong><br>Describe the issue in natural language. SmartReport can extract hostel, floor, wing, area and room details from the text, classify the problem, and optionally use an image to identify a faulty asset. The fields remain editable and nothing is submitted automatically.</section></aside></div>`;
 }
 function communityView() {
   return `<div class="page-heading"><div><p class="eyebrow">PUBLIC-SAFE TRACKER</p><h1>Community Issues</h1><p>Browse reports shared by the community. Reporter identities and private staff notes are not shown.</p></div><button class="btn" data-page="report">＋ Report an issue</button></div>
@@ -120,48 +171,17 @@ function issueView() {
   if(!i) return `<div class="page-heading"><div><h1>Issue Details</h1><p>Loading issue…</p></div><span class="spinner"></span></div>`;
   const own=state.myIssueIds.has(Number(i.id));
   return `<div class="page-heading"><div><a href="#community" data-page="${own?"my-reports":"community"}" class="text-link">← Back to ${own?"My Reports":"Community Issues"}</a><p class="eyebrow" style="margin-top:16px">ISSUE HF-${String(i.id).padStart(4,"0")}</p><h1>${esc(i.title)}</h1><p>${esc(locationLabel(i.location_id))}</p></div><div class="row wrap">${statusChip(i.status)}${i.is_public?'<span class="chip">Public report</span>':'<span class="chip">Private report</span>'}</div></div>
-  <div class="detail-layout"><div class="stack"><section class="card card-pad"><div class="section-head"><h2>Issue description</h2><div class="row wrap">${isStaff()?'<span class="chip">Staff view</span>':''}${canEditOrDelete(i)?`<button class="btn btn-secondary btn-small" data-action="edit-issue" data-id="${i.id}">Edit complaint</button><button class="btn btn-danger btn-small" data-action="delete-issue" data-id="${i.id}">Delete complaint</button>`:""}</div></div><p class="detail-description">${esc(i.description)}</p><div class="divider"></div><div class="meta-grid"><div class="meta-box"><small>Location</small><strong>${esc(locationLabel(i.location_id))}</strong></div><div class="meta-box"><small>Problem type</small><strong>${esc(problemLabel(i.problem_type_id))}</strong></div><div class="meta-box"><small>Reported on</small><strong>${esc(date(i.created_at,true))}</strong></div><div class="meta-box"><small>Service date</small><strong>${esc(date(i.service_date))}</strong></div></div><div class="row spread wrap" style="margin-top:18px"><div><strong id="confirmation-count" style="font-size:14px">Community confirmations</strong><div class="small muted" style="margin-top:4px">Other residents can confirm they are affected.</div></div>${i.is_public?`<button class="btn btn-secondary" data-action="toggle-confirm" data-id="${i.id}" id="confirm-button">Me too</button>`:""}</div></section>
+  <div class="detail-layout"><div class="stack"><section class="card card-pad"><div class="section-head"><h2>Issue description</h2><div class="row wrap">${isStaff()?'<span class="chip">Staff view</span>':''}${canEditOrDelete(i)?`<button class="btn btn-secondary btn-small" data-action="edit-issue" data-id="${i.id}">Edit complaint</button><button class="btn btn-danger btn-small" data-action="delete-issue" data-id="${i.id}">Delete complaint</button>`:""}</div></div><p class="detail-description">${esc(i.description)}</p><div class="divider"></div><div class="meta-grid"><div class="meta-box"><small>Location</small><strong>${esc(locationLabel(i.location_id))}</strong></div><div class="meta-box"><small>Problem type</small><strong>${esc(problemLabel(i.problem_type_id))}</strong></div><div class="meta-box"><small>Reported on</small><strong>${esc(date(i.created_at,true))}</strong></div><div class="meta-box"><small>Service date</small><strong>${esc(date(i.service_date))}</strong></div></div><div class="row spread wrap" style="margin-top:18px"><div><strong id="confirmation-count" style="font-size:14px">Community confirmations</strong><div class="small muted" style="margin-top:4px">Other residents can confirm they are affected.</div></div>${i.is_public && i.status === "submitted"?`<button class="btn btn-secondary" data-action="toggle-confirm" data-id="${i.id}" id="confirm-button">Me too</button>`:""}</div></section>
   <section class="card card-pad"><div class="section-head"><div><h2>Status timeline</h2><p>Public-safe updates to this report.</p></div></div><div id="issue-timeline"><div class="empty-state"><span class="spinner"></span><p>Loading timeline…</p></div></div></section>
-  ${own&&["resolved","closed"].includes(i.status)?`<section class="card card-pad"><h2 class="card-title">Has the issue been fixed?</h2><p class="card-subtitle">Your feedback helps keep the tracker accurate.</p><div class="field" style="margin-top:16px"><label for="resolution-comment">Optional comment</label><textarea class="textarea" id="resolution-comment" placeholder="Tell us whether the fix worked."></textarea></div><div class="row wrap" style="margin-top:14px"><button class="btn" data-action="resolution-feedback" data-outcome="resolved" data-id="${i.id}">Confirm fix</button><button class="btn btn-secondary" data-action="resolution-feedback" data-outcome="not_resolved" data-id="${i.id}">Still not fixed</button><button class="btn btn-secondary" data-action="show-reopen" data-id="${i.id}">Request reopening</button></div></section>`:""}
+  ${own&&["resolved","closed"].includes(i.status)?`<section class="card card-pad"><h2 class="card-title">Has the issue been fixed?</h2><p class="card-subtitle">Your feedback helps keep the tracker accurate.</p><div class="field" style="margin-top:16px"><label for="resolution-comment">Optional comment</label><textarea class="textarea" id="resolution-comment" placeholder="Tell us whether the fix worked."></textarea></div><div class="row wrap" style="margin-top:14px"><button class="btn" data-action="resolution-feedback" data-outcome="resolved" data-id="${i.id}">Confirm fix</button><button class="btn btn-secondary" data-action="show-reopen" data-id="${i.id}">Request reopening</button></div></section>`:""}
   </div><aside class="stack"><section class="card card-pad"><h2 class="card-title">Current status</h2><div style="margin:14px 0">${statusChip(i.status)}</div><p class="card-subtitle">Last updated ${esc(date(i.updated_at,true))}</p><div class="divider"></div><div class="row"><span class="metric-icon">◷</span><div><strong style="font-size:13px">Keep an eye on updates</strong><p class="card-subtitle">New status changes appear in the timeline.</p></div></div></section>
   ${isStaff()?`<section class="card card-pad"><h2 class="card-title">Staff actions</h2><p class="card-subtitle">Updates are recorded in the complaint timeline.</p><form id="staff-update-form" class="stack" style="margin-top:16px"><div class="field"><label for="staff-status">Set status</label><select class="select" id="staff-status">${["acknowledged","in_progress","resolved","closed","rejected","reopened"].map(s=>`<option value="${s}" ${s===i.status?"selected":""}>${human(s)}</option>`).join("")}</select></div><div class="field"><label for="staff-note">Progress / resolution note</label><textarea class="textarea" id="staff-note" placeholder="Describe the action taken, or give a rejection reason…"></textarea></div><label class="checkbox-row"><input type="checkbox" id="internal-note"><span>Internal note (not visible to students)</span></label><button class="btn" type="submit">Save update</button></form></section>`:""}</aside></div>`;
 }
 function myReportsView() { return `<div class="page-heading"><div><p class="eyebrow">YOUR SUBMISSIONS</p><h1>My Reports</h1><p>Track your own complaints, check progress, and confirm whether a fix worked.</p></div><button class="btn" data-page="report">＋ New report</button></div><section class="card card-pad"><div class="row spread wrap" style="margin-bottom:18px"><div><h2 class="card-title">Your reports</h2><p class="card-subtitle" id="my-summary">Loading your reports…</p></div><select class="select" id="my-status-filter" style="width:190px"><option value="">All statuses</option>${["submitted","acknowledged","in_progress","resolved","closed","rejected","reopened"].map(s=>`<option value="${s}">${human(s)}</option>`).join("")}</select></div><div id="my-list"><div class="empty-state"><span class="spinner"></span><p>Loading…</p></div></div><div id="my-pagination" class="pagination"></div></section>`; }
-function profileView() { const u=state.user||{};return `<div class="page-heading"><div><p class="eyebrow">ACCOUNT SETTINGS</p><h1>Profile</h1><p>View your account details and manage your HostelFix session.</p></div></div><div class="grid" style="grid-template-columns:minmax(0,1.4fr) minmax(270px,.8fr);align-items:start"><section class="card card-pad"><div class="section-head"><h2>Personal information</h2><span class="chip">${esc(human(u.role||"student"))}</span></div><div class="profile-info"><div class="profile-avatar">${esc(initials(u.name))}</div><div><h2 style="font-size:18px;margin:0 0 5px">${esc(u.name||"HostelFix user")}</h2><p class="card-subtitle">${esc(u.email||"")}</p></div></div><div class="divider"></div><div class="meta-grid"><div class="meta-box"><small>Full name</small><strong>${esc(u.name||"—")}</strong></div><div class="meta-box"><small>Email address</small><strong>${esc(u.email||"—")}</strong></div><div class="meta-box"><small>Role</small><strong>${esc(human(u.role||"student"))}</strong></div><div class="meta-box"><small>Member since</small><strong>${esc(date(u.created_at))}</strong></div></div><div class="divider"></div><div class="row spread wrap"><div><strong style="font-size:13px">Session</strong><p class="card-subtitle">This development build uses a demo identity.</p></div><button class="btn btn-secondary" data-action="logout">Sign out</button></div></section><aside class="stack"><section class="card card-pad"><h2 class="card-title">Privacy and data</h2><p class="card-subtitle" style="line-height:1.7">Public reports do not display your identity. Do not include sensitive personal information in report titles or descriptions.</p></section><section class="card card-pad"><h2 class="card-title" style="color:#991b1b">Delete account</h2><p class="card-subtitle" style="line-height:1.7">Your account will be deactivated in this demo. Existing issue records are retained for audit history.</p><button class="btn btn-danger" style="margin-top:16px" data-action="confirm-delete-account">Delete my account</button></section></aside></div>`; }
+function profileView() { const u=state.user||{};return `<div class="page-heading"><div><p class="eyebrow">ACCOUNT SETTINGS</p><h1>Profile</h1><p>Manage your account details and session.</p></div></div><div class="grid" style="grid-template-columns:minmax(0,1.4fr) minmax(270px,.8fr);align-items:start"><section class="card card-pad"><div class="section-head"><h2>Personal information</h2><span class="chip">${esc(human(u.role||"student"))}</span></div><div class="profile-info"><div class="profile-avatar">${esc(initials(u.name))}</div><div><h2 style="font-size:18px;margin:0 0 5px">${esc(u.name||"HostelFix user")}</h2><p class="card-subtitle">${esc(u.email||"")}</p></div></div><div class="divider"></div><form id="profile-form" class="stack"><div class="field"><label for="profile-name">Display name</label><input class="input" id="profile-name" maxlength="120" required value="${esc(u.name||"")}"></div><button class="btn" type="submit">Save profile</button></form>${u.role !== "student" ? `<div class="divider"></div><form id="password-form" class="stack"><h3 style="margin:0">Change password</h3><div class="field"><label for="current-password">Current password</label><input class="input" id="current-password" type="password" required></div><div class="field"><label for="new-password-profile">New password</label><input class="input" id="new-password-profile" type="password" minlength="5" required></div><button class="btn btn-secondary" type="submit">Change password</button></form>` : ""}<div class="divider"></div><div class="row spread wrap"><div><strong style="font-size:13px">Session</strong><p class="card-subtitle">Authenticated with a server-side session cookie.</p></div><button class="btn btn-secondary" data-action="logout">Sign out</button></div></section><aside class="stack"><section class="card card-pad"><h2 class="card-title">Privacy and data</h2><p class="card-subtitle" style="line-height:1.7">Public reports do not display your identity. Complaint history is retained in anonymised form when you delete your account.</p></section><section class="card card-pad" style="color:#991b1b"><h2 class="card-title">Delete account</h2><p class="card-subtitle" style="line-height:1.7">Your account identifiers are removed/anonymised while complaint history is retained for audit history.</p><button class="btn btn-danger" style="margin-top:16px" data-action="confirm-delete-account">Delete my account</button></section></aside></div>`; }
 function staffView() { return `<div class="page-heading"><div><p class="eyebrow">AUTHORISED WORK QUEUE</p><h1>Staff Dashboard</h1><p>Review issues in your authorised category, record progress, and keep residents informed. Reporter identity is hidden.</p></div><span class="chip">${esc(human(selectedRole()))}</span></div><div class="grid grid-4" id="staff-metrics"><div class="card metric"><div class="metric-label">Total in queue</div><div class="metric-value">—</div></div><div class="card metric"><div class="metric-label">Submitted</div><div class="metric-value">—</div></div><div class="card metric"><div class="metric-label">In progress</div><div class="metric-value">—</div></div><div class="card metric"><div class="metric-label">Resolved</div><div class="metric-value">—</div></div></div><section class="card card-pad" style="margin-top:22px"><div class="row spread wrap" style="margin-bottom:18px"><div><h2 class="card-title">Complaint queue</h2><p class="card-subtitle" id="staff-summary">Loading authorised issues…</p></div><select class="select" id="staff-status-filter" style="width:190px"><option value="">All statuses</option>${["submitted","acknowledged","in_progress","resolved","closed","rejected","reopened"].map(s=>`<option value="${s}">${human(s)}</option>`).join("")}</select></div><div id="staff-list"><div class="empty-state"><span class="spinner"></span><p>Loading queue…</p></div></div></section>`; }
-function adminView() { return `<div class="page-heading"><div><p class="eyebrow">SYSTEM OVERVIEW</p><h1>Admin Dashboard</h1><p>Monitor complaint volume, review status distribution, and manage staff accounts.</p></div><button class="btn" data-action="open-staff-modal">＋ Create staff account</button></div><div class="grid grid-4" id="admin-metrics"><div class="card metric"><div class="metric-label">Total issues</div><div class="metric-value">—</div></div><div class="card metric"><div class="metric-label">Open issues</div><div class="metric-value">—</div></div><div class="card metric"><div class="metric-label">In progress</div><div class="metric-value">—</div></div><div class="card metric"><div class="metric-label">Resolved / closed</div><div class="metric-value">—</div></div></div><div class="grid grid-2" style="margin-top:22px"><section class="card card-pad"><h2 class="card-title">Issues by status</h2><p class="card-subtitle">Current complaint lifecycle distribution.</p><div id="admin-status-bars" style="margin-top:24px"><span class="spinner"></span></div></section><section class="card card-pad"><h2 class="card-title">Issues by category</h2><p class="card-subtitle">Maintenance and housekeeping volume.</p><div id="admin-category-bars" style="margin-top:24px"><span class="spinner"></span></div></section></div><section class="card card-pad" style="margin-top:22px"><div class="section-head"><div><h2>Recent complaints</h2><p>Open a complaint to inspect details and status history.</p></div><button class="btn btn-secondary btn-small" data-page="staff">Open staff queue</button></div><div id="admin-issues"><div class="empty-state"><span class="spinner"></span><p>Loading…</p></div></div></section>`; }
-function notificationsView() { return `<div class="page-heading"><div><p class="eyebrow">UPDATES</p><h1>Notifications</h1><p>Keep track of complaint status changes.</p></div><button class="btn btn-secondary" data-page="dashboard">Back to dashboard</button></div><section class="card card-pad"><div id="notifications-list"><div class="empty-state"><span class="spinner"></span><p>Loading notifications…</p></div></div></section>`; }
-function renderModal() {
-  if (state.modal === "edit-issue" && state.editingIssue) {
-    const issue = state.editingIssue;
-    return `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-issue-title"><h2 id="edit-issue-title">Edit complaint</h2><p>Edits are available only while the complaint is still submitted. Once acknowledged, the record is locked.</p><form id="edit-issue-form" class="stack"><div class="field"><label for="edit-title">Title</label><input class="input" id="edit-title" required minlength="5" maxlength="180" value="${esc(issue.title)}"></div><div class="field"><label for="edit-description">Description</label><textarea class="textarea" id="edit-description" required minlength="10" maxlength="5000">${esc(issue.description)}</textarea></div><div class="field"><label for="edit-location">Location</label><select class="select" id="edit-location" required>${state.locations.map(location=>`<option value="${location.id}" ${Number(location.id)===Number(issue.location_id)?"selected":""}>${esc(locationLabel(location.id))}</option>`).join("")}</select></div><div class="field"><label for="edit-problem">Problem type / category</label><select class="select" id="edit-problem" required>${state.problemTypes.map(problem=>`<option value="${problem.id}" ${Number(problem.id)===Number(issue.problem_type_id)?"selected":""}>${esc(problem.name)} — ${esc(problem.category_name)}</option>`).join("")}</select><span class="hint">Choose the problem based on the actual fault, not just the room or team responsible for the area.</span></div><div class="field"><label for="edit-room-label">Room label (optional)</label><input class="input" id="edit-room-label" maxlength="80" value="${esc(issue.room_label||"")}" placeholder="e.g. 412"></div><div class="field"><label for="edit-service-date">Housekeeping service date (optional)</label><input class="input" id="edit-service-date" type="date" value="${esc(issue.service_date||"")}"></div><label class="checkbox-row"><input id="edit-public" type="checkbox" ${issue.is_public?"checked":""}><span>Show this complaint in Community Issues</span></label><div class="modal-actions"><button class="btn btn-secondary" type="button" data-action="close-modal">Cancel</button><button class="btn" type="submit">Save changes</button></div></form></section></div>`;
-  }
-  if(state.modal==="delete-issue") return `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-issue-title"><h2 id="delete-issue-title">Delete this complaint?</h2><p>This permanently removes your unacknowledged complaint. You cannot delete it after staff acknowledge it.</p><div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-danger" data-action="confirm-delete-issue">Delete complaint</button></div></section></div>`;
-  if(state.modal==="delete") return `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><h2 id="modal-title">Delete your account?</h2><p>This will deactivate your demo account. Your existing complaint records remain for audit history. You will be signed out.</p><div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-danger" data-action="delete-account">Delete account</button></div></section></div>`;
-  if(state.modal==="staff") return `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><h2 id="modal-title">Create staff account</h2><p>Create a staff identity for the development demo. Use an approved institutional address in a real deployment.</p><form id="staff-create-form" class="stack"><div class="field"><label for="new-staff-name">Full name</label><input class="input" id="new-staff-name" required maxlength="120" placeholder="e.g. Kavita Rao"></div><div class="field"><label for="new-staff-email">Email</label><input class="input" id="new-staff-email" required type="email" maxlength="255" placeholder="staff@iitdh.ac.in"></div><div class="field"><label for="new-staff-category">Category</label><select class="select" id="new-staff-category" required>${state.categories.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></div><div class="modal-actions"><button class="btn btn-secondary" type="button" data-action="close-modal">Cancel</button><button class="btn" type="submit">Create account</button></div></form></section></div>`;
-  if(state.modal==="reopen") return `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><h2 id="modal-title">Request reopening</h2><p>Explain why the issue is still unresolved. This request will be added to the issue history.</p><form id="reopen-form" class="stack"><div class="field"><label for="reopen-reason">Reason</label><textarea class="textarea" id="reopen-reason" required minlength="5" placeholder="The tap is still leaking…"></textarea></div><div class="modal-actions"><button class="btn btn-secondary" type="button" data-action="close-modal">Cancel</button><button class="btn" type="submit">Request reopening</button></div></form></section></div>`;
-  return "";
-}
+function adminView() { return `<div class="page-heading"><div><p class="eyebrow">SYSTEM OVERVIEW</p><h1>Admin Dashboard</h1><p>Monitor complaints and manage the HostelFix service.</p></div><button class="btn" data-action="open-staff-modal">＋ Create staff account</button></div><div class="grid grid-4" id="admin-metrics"><div class="card metric"><div class="metric-label">Total issues</div><div class="metric-value">—</div></div><div class="card metric"><div class="metric-label">Overdue</div><div class="metric-value">—</div></div><div class="card metric"><div class="metric-label">Reopened</div><div class="metric-value">—</div></div><div class="card metric"><div class="metric-label">Avg resolution</div><div class="metric-value">—</div></div></div><div class="grid grid-2" style="margin-top:22px"><section class="card card-pad"><h2 class="card-title">Issues by status</h2><div id="admin-status-bars" style="margin-top:24px"><span class="spinner"></span></div></section><section class="card card-pad"><h2 class="card-title">Issues by category</h2><div id="admin-category-bars" style="margin-top:24px"><span class="spinner"></span></div></section></div><section class="card card-pad" style="margin-top:22px"><div class="section-head"><div><h2>Analytics</h2><p>Location, problem-type and lifecycle metrics.</p></div><button class="btn btn-secondary btn-small" data-page="staff">Open staff queue</button></div><div id="admin-analytics-extra" class="grid grid-2" style="margin-top:16px"></div></section><section class="card card-pad" style="margin-top:22px"><div class="section-head"><div><h2>Recent complaints</h2><p>Open a complaint to inspect details and status history.</p></div></div><div id="admin-issues"><div class="empty-state"><span class="spinner"></span><p>Loading…</p></div></div></section>`; }
 
-async function loadBaseData() {
-  const [locs, pts, hostels, cats, demoUsers] = await Promise.all([
-    api("/locations/catalog",{auth:false}), api("/problem-types/catalog",{auth:false}), api("/hostels?size=50",{auth:false}), api("/categories?size=50",{auth:false}), api("/demo-users",{auth:false})
-  ]);
-  state.locations=locs.items||[]; state.problemTypes=pts.items||[]; state.hostels=hostels.items||[]; state.categories=cats.items||[];
-  state.demoUsers=demoUsers.items||[];
-  if (!state.demoUsers.some(user => Number(user.id) === Number(state.userId))) {
-    const student = state.demoUsers.find(user => user.role === "student");
-    state.userId = Number(student?.id || state.demoUsers[0]?.id || 0);
-    if (state.userId) localStorage.setItem("hf.userId", String(state.userId));
-  }
-}
-async function login() {
-  state.userId=Number($("#demo-user")?.value || state.userId);
-  if (!state.userId) { toast("No demo users were found. Check that the database seed completed.", "error"); return; }
-  localStorage.setItem("hf.userId",String(state.userId));
-  try { state.user=await api("/me"); state.loggedIn=true;localStorage.setItem("hf.loggedIn","true");state.page=state.user.role==="administrator"?"admin":state.user.role==="staff"?"staff":"dashboard"; await loadBaseData(); render(); if(state.page==="admin")loadAdmin();else if(state.page==="staff")loadStaffQueue();else loadDashboard(); }
-  catch(e){toast(`Demo sign-in failed: ${e.message}`,"error");}
-}
 async function loadDashboard() {
   try {
     const [mine, community] = await Promise.all([api("/my/issues?size=50"),api("/issues?size=50",{auth:false})]);
@@ -198,7 +218,7 @@ function filteredCommunity() {
 function renderCommunityList() {
   const node=$("#community-list");if(!node)return;const items=filteredCommunity();const pages=Math.max(1,Math.ceil(items.length/PAGE_SIZE));state.listPage=Math.min(state.listPage,pages);const shown=items.slice((state.listPage-1)*PAGE_SIZE,state.listPage*PAGE_SIZE);
   $("#community-summary").textContent=`${items.length} report${items.length===1?"":"s"} match your filters`;
-  node.innerHTML=shown.length?shown.map(i=>`<div class="issue-row"><div class="issue-symbol">${isHousekeeping(problemLabel(i.problem_type_id))?"✦":"⌁"}</div><div class="issue-main"><div class="row spread wrap"><a class="issue-title" href="#issue-${i.id}" data-action="open-issue" data-id="${i.id}">HF-${String(i.id).padStart(4,"0")} · ${esc(i.title)}</a>${statusChip(i.status)}</div><div class="issue-meta">${esc(locationLabel(i.location_id))} · ${esc(problemLabel(i.problem_type_id))}<br>Reported ${esc(date(i.created_at,true))}</div><p class="issue-excerpt">${esc(i.description)}</p><div class="issue-actions"><button class="btn btn-secondary btn-small" data-action="open-issue" data-id="${i.id}">View details</button>${state.myIssueIds.has(Number(i.id))?'<span class="small muted">Your report</span>':`<button class="btn btn-secondary btn-small" data-action="toggle-confirm" data-id="${i.id}">＋ Me too</button>`}</div></div></div>`).join(""):`<div class="empty-state"><div class="empty-icon">⌕</div><h3>No reports found</h3><p>Try a different keyword or clear some filters to see more community issues.</p><button class="btn btn-secondary" data-action="clear-community">Clear filters</button></div>`;
+  node.innerHTML=shown.length?shown.map(i=>`<div class="issue-row"><div class="issue-symbol">${isHousekeeping(problemLabel(i.problem_type_id))?"✦":"⌁"}</div><div class="issue-main"><div class="row spread wrap"><a class="issue-title" href="#issue-${i.id}" data-action="open-issue" data-id="${i.id}">HF-${String(i.id).padStart(4,"0")} · ${esc(i.title)}</a>${statusChip(i.status)}</div><div class="issue-meta">${esc(locationLabel(i.location_id))} · ${esc(problemLabel(i.problem_type_id))}<br>Reported ${esc(date(i.created_at,true))}</div><p class="issue-excerpt">${esc(i.description)}</p><div class="issue-actions"><button class="btn btn-secondary btn-small" data-action="open-issue" data-id="${i.id}">View details</button>${state.myIssueIds.has(Number(i.id))?'<span class="small muted">Your report</span>':(i.status === "submitted" ? `<button class="btn btn-secondary btn-small" data-action="toggle-confirm" data-id="${i.id}">＋ Me too</button>` : "")}</div></div></div>`).join(""):`<div class="empty-state"><div class="empty-icon">⌕</div><h3>No reports found</h3><p>Try a different keyword or clear some filters to see more community issues.</p><button class="btn btn-secondary" data-action="clear-community">Clear filters</button></div>`;
   const p=$("#community-pagination");p.innerHTML=items.length?`<button class="btn btn-secondary btn-small" data-action="community-page" data-target-page="${state.listPage-1}" ${state.listPage<=1?"disabled":""}>← Previous</button><span>Page ${state.listPage} of ${pages}</span><button class="btn btn-secondary btn-small" data-action="community-page" data-target-page="${state.listPage+1}" ${state.listPage>=pages?"disabled":""}>Next →</button>`:"";
 }
 async function loadMyReports() {
@@ -263,40 +283,76 @@ const SMART_CLASSIFICATION_RULES = [
   { pattern: /\b(wet floor|spillage|spilled|spill)\b/i, category: "Housekeeping", problem: "Wet floor", title: "Wet floor needs attention" },
 ];
 
-function smartDraft() {
-  const text = $("#smart-description")?.value.trim();
-  const out = $("#smart-message");
-  if (!out) return;
-  if (!text) {
-    out.innerHTML = '<div class="alert warning">Describe the issue first, then try drafting.</div>';
-    return;
-  }
+async function smartDraft() {
+  const text = $("#smart-description")?.value.trim(); const out=$("#smart-message"); if(!out)return;
+  const image=$("#smart-image")?.files?.[0];
+  if(!text && !image){out.innerHTML='<div class="alert warning">Add a description or image first.</div>';return;}
+  out.innerHTML='<div class="alert">SmartReport is analyzing the report and extracting the location…</div>';
+  try{
+    const form=new FormData();form.append("text",text);if(image)form.append("image",image);
+    const r=await api("/issues/draft",{method:"POST",body:form});const d=r.draft||{};
+    if(d.description)$("#issue-description").value=d.description;else if(text)$("#issue-description").value=text;
+    if(d.title)$("#issue-title").value=d.title;
 
-  const match = SMART_CLASSIFICATION_RULES.find(rule => rule.pattern.test(text));
-  $("#issue-description").value = text;
-  const suggestedTitle = match?.title || text.split(/\s+/).filter(Boolean).slice(0, 9).join(" ").replace(/[.,!?]+$/g, "");
-  $("#issue-title").value = suggestedTitle.length >= 5 ? suggestedTitle.charAt(0).toUpperCase() + suggestedTitle.slice(1) : "Hostel issue requiring attention";
-
-  if (match) {
-    const category = state.categories.find(item => item.name === match.category);
-    const problem = state.problemTypes.find(item => item.name === match.problem && item.category_name === match.category);
-    if (category && problem) {
-      $("#category-select").value = String(category.id);
-      updateProblemTypes().then(() => { $("#problem-select").value = String(problem.id); });
+    // SmartReport location fields are applied in dependency order. This is the key
+    // workflow: hostel -> floor -> wing -> area -> asset, so the user only has to review.
+    if(d.hostel?.value){
+      const h=state.hostels.find(x=>String(x.name).toLowerCase()===String(d.hostel.value).toLowerCase());
+      if(h){$("#hostel-select").value=String(h.id);await updateFloors();}
     }
-    out.innerHTML = `<div class="alert warning"><strong>Suggested classification: ${esc(match.category)} / ${esc(match.problem)}.</strong> Check the suggested category, problem type and exact location before submitting. This is a keyword-based draft, not an AI decision.</div>`;
-  } else {
-    out.innerHTML = '<div class="alert warning"><strong>No confident category suggestion.</strong> The description was copied into the form, but category and problem type were left unchanged. Choose the closest problem manually to avoid a misleading classification.</div>';
-  }
+    if(d.floor?.value){
+      const f=[...$("#floor-select")?.options||[]].find(o=>String(o.textContent).toLowerCase().includes(`floor ${String(d.floor.value).toLowerCase()}`));
+      if(f){$("#floor-select").value=f.value;await updateWings();}
+    }
+    if(d.wing?.value){
+      const w=[...$("#wing-select")?.options||[]].find(o=>o.textContent.trim().toLowerCase()===`wing ${String(d.wing.value).toLowerCase()}`);
+      if(w){$("#wing-select").value=w.value;await updateAreas();}
+    }
+    if(d.area?.value){
+      const aliases={corridor:["corridor","hallway","hall"],washing_machine_area:["washing machine area","washing-machine area"],cloth_drying_area:["cloth drying area","clothes drying area","drying area"],drinking_water_area:["drinking water area","water dispenser area"],lift_lobby:["lift lobby","elevator lobby"],bathroom:["bathroom","washroom"],toilet:["toilet"],room:["room"]};
+      const target=String(d.area.value).toLowerCase().replaceAll("_"," ");
+      const a=[...$("#area-select")?.options||[]].find(o=>o.dataset.areaType===d.area.value || o.textContent.trim().toLowerCase()===target || (aliases[d.area.value]||[]).some(v=>o.textContent.trim().toLowerCase()===v));
+      if(a){$("#area-select").value=a.value;toggleRoomAsset();await loadAssets(Number(a.value));}
+    }
+    if(d.room_label?.value)$("#room-label").value=d.room_label.value;
+    if(d.asset?.value){
+      const sel=$("#asset-select");
+      if(sel){const a=[...sel.options].find(o=>o.textContent.trim().toLowerCase()===String(d.asset.value).toLowerCase());if(a)sel.value=a.value;}
+    }
+    const category=state.categories.find(x=>String(x.name).toLowerCase()===String(d.category?.value||"").toLowerCase());
+    if(category){$("#category-select").value=String(category.id);await updateProblemTypes();const problem=state.problemTypes.find(x=>String(x.name).toLowerCase()===String(d.problem_type?.value||"").toLowerCase()&&String(x.category_id)===String(category.id));if(problem)$("#problem-select").value=String(problem.id);}
+    const missing=(d.missing_fields||[]).map(x=>human(x)).join(", ");
+    out.innerHTML=`<div class="alert success"><strong>SmartReport filled the editable form.</strong> ${esc(r.message||"")} ${esc(d.image_observation||"")}${missing?`<br><strong>Still needs your input:</strong> ${esc(missing)}`:""}${d.needs_clarification?`<br><strong>Clarification:</strong> ${esc(d.clarification_question||"Please review the suggested fields.")}`:""}<br><span class="small">Review every field. Nothing is submitted automatically.</span></div>`;
+  }catch(e){out.innerHTML=`<div class="alert warning"><strong>SmartReport unavailable.</strong> ${esc(e.message)} Manual reporting still works.</div>`;}
 }
 
-function submitIssue(event) {
-  event.preventDefault();const locationId=Number($("#area-select")?.value),problemTypeId=Number($("#problem-select")?.value),loc=state.locations.find(x=>x.id===locationId);const payload={title:$("#issue-title").value.trim(),description:$("#issue-description").value.trim(),location_id:locationId,problem_type_id:problemTypeId,is_public:$("#issue-public").checked};
+async function showReviewOverlay(payload) {
+  const problem = state.problemTypes.find(x=>Number(x.id)===Number(payload.problem_type_id));
+  const overlay=document.createElement("div");overlay.id="review-overlay";overlay.className="modal-backdrop";
+  overlay.innerHTML=`<section class="modal" role="dialog" aria-modal="true" aria-labelledby="review-title"><p class="eyebrow">FINAL CHECK</p><h2 id="review-title">Review and submit</h2><p>Please check the location and description. Your report will only be submitted when you confirm below.</p><div class="meta-grid" style="margin-top:16px"><div class="meta-box"><small>Title</small><strong>${esc(payload.title)}</strong></div><div class="meta-box"><small>Category / problem</small><strong>${esc(problem?.name||"")}</strong></div><div class="meta-box" style="grid-column:1/-1"><small>Location</small><strong>${esc(locationLabel(payload.location_id))}</strong></div><div class="meta-box" style="grid-column:1/-1"><small>Description</small><strong style="font-weight:500;white-space:pre-wrap">${esc(payload.description)}</strong></div><div class="meta-box"><small>Visibility</small><strong>${payload.is_public?"Public-safe community report":"Private to you and authorised staff"}</strong></div></div><div class="modal-actions"><button class="btn btn-secondary" data-action="cancel-review" type="button">Go back</button><button class="btn" data-action="submit-reviewed" type="button">Confirm submission</button></div></section>`;
+  document.body.appendChild(overlay);
+}
+async function showSimilarOrReview(payload) {
+  try {
+    const category=state.categories.find(c=>String(c.id)==String(payload.category_id||$("#category-select")?.value));
+    const qs=new URLSearchParams({location_id:String(payload.location_id),problem_type_id:String(payload.problem_type_id)});
+    if(payload.service_date)qs.set("service_date",payload.service_date);
+    const data=await api(`/issues/similar?${qs.toString()}`);
+    if(!(data.items||[]).length){ await showReviewOverlay(payload); return; }
+    const overlay=document.createElement("div");overlay.id="similar-overlay";overlay.className="modal-backdrop";
+    overlay.innerHTML=`<section class="modal" role="dialog" aria-modal="true" aria-labelledby="similar-title"><p class="eyebrow">BEFORE YOU SUBMIT</p><h2 id="similar-title">Similar open complaints found</h2><p>Another resident may already have reported the same problem at this location. You can add <strong>Me too</strong> instead of creating a duplicate, or continue with a new complaint.</p><div class="stack" style="margin-top:16px">${data.items.map(i=>`<div class="card card-pad" style="box-shadow:none;border:1px solid var(--border)"><div class="row spread wrap"><div><strong>${esc(i.title)}</strong><div class="small muted">${esc(problemLabel(i.problem_type_id))} · ${esc(date(i.created_at,true))}</div></div><span class="status status-${esc(String(i.status).toLowerCase())}">${esc(human(i.status))}</span></div><p class="small" style="margin:10px 0">${esc(i.description)}</p><button class="btn btn-secondary btn-small" data-action="similar-me-too" data-id="${i.id}">Me too</button></div>`).join("")}</div><div class="modal-actions"><button class="btn btn-secondary" data-action="similar-continue" type="button">Continue with my report</button><button class="btn" data-action="similar-cancel" type="button">Go back</button></div></section>`;
+    document.body.appendChild(overlay); state.pendingIssue=payload;
+  } catch(e) { await showReviewOverlay(payload); }
+}
+async function submitIssue(event) {
+  event.preventDefault();const locationId=Number($("#area-select")?.value),problemTypeId=Number($("#problem-select")?.value),loc=state.locations.find(x=>x.id===locationId),category=state.categories.find(c=>String(c.id)===$("#category-select")?.value);
+  const payload={title:$("#issue-title").value.trim(),description:$("#issue-description").value.trim(),location_id:locationId,problem_type_id:problemTypeId,asset_id:Number($("#asset-select")?.value||0)||null,is_public:$("#issue-public").checked};
   if(loc?.area_type==="room")payload.room_label=$("#room-label").value.trim()||null;
-  const category=state.categories.find(c=>String(c.id)===$("#category-select").value);if(isHousekeeping(category?.name)&&$("#service-date").value)payload.service_date=$("#service-date").value;
+  if(isHousekeeping(category?.name)&&$("#service-date").value)payload.service_date=$("#service-date").value;
   if(!payload.location_id||!payload.problem_type_id){toast("Select a complete location and problem type.","error");return;}
+  if(!payload.title||payload.title.length<5||!payload.description||payload.description.length<10){toast("Complete the title and description before submitting.","error");return;}
   state.pendingIssue=payload;
-  const overlay=document.createElement("div");overlay.id="review-overlay";overlay.className="modal-backdrop";overlay.innerHTML=`<section class="modal" role="dialog" aria-modal="true" aria-labelledby="review-title"><p class="eyebrow">FINAL CHECK</p><h2 id="review-title">Review and submit</h2><p>Please check the location and description. Your report will only be submitted when you confirm below.</p><div class="meta-grid" style="margin-top:16px"><div class="meta-box"><small>Title</small><strong>${esc(payload.title)}</strong></div><div class="meta-box"><small>Category / problem</small><strong>${esc(problemLabel(payload.problem_type_id))}</strong></div><div class="meta-box" style="grid-column:1/-1"><small>Location</small><strong>${esc(locationLabel(payload.location_id))}</strong></div><div class="meta-box" style="grid-column:1/-1"><small>Description</small><strong style="font-weight:500;white-space:pre-wrap">${esc(payload.description)}</strong></div><div class="meta-box"><small>Visibility</small><strong>${payload.is_public?"Public-safe community report":"Private to you and authorised staff"}</strong></div></div><div class="modal-actions"><button class="btn btn-secondary" data-action="cancel-review" type="button">Go back</button><button class="btn" data-action="submit-reviewed" type="button">Confirm submission</button></div></section>`;document.body.appendChild(overlay);
+  if(loc?.area_type!=="room") await showSimilarOrReview(payload); else await showReviewOverlay(payload);
 }
 async function openEditIssue(issueId) {
   try {
@@ -369,11 +425,73 @@ async function loadStaffQueue() {
 }
 function renderStaffItems(items) {const n=$("#staff-list");if(!n)return;const status=$("#staff-status-filter")?.value||"";const filtered=status?items.filter(i=>i.status===status):items;$("#staff-summary").textContent=`${filtered.length} issue${filtered.length===1?"":"s"} in this view`;n.innerHTML=filtered.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Issue</th><th>Location</th><th>Status</th><th>Reported</th><th>Action</th></tr></thead><tbody>${filtered.map(i=>`<tr><td><a class="issue-title" data-action="open-issue" data-id="${i.id}" href="#issue-${i.id}">HF-${String(i.id).padStart(4,"0")} · ${esc(i.title)}</a><div class="small muted" style="margin-top:5px">${esc(problemLabel(i.problem_type_id))}</div></td><td>${esc(locationLabel(i.location_id))}</td><td>${statusChip(i.status)}</td><td>${esc(date(i.created_at))}</td><td><button class="btn btn-secondary btn-small" data-action="open-issue" data-id="${i.id}">Manage</button></td></tr>`).join("")}</tbody></table></div>`:`<div class="empty-state"><div class="empty-icon">✓</div><h3>No matching issues</h3><p>Try a different status filter.</p></div>`;}
 async function saveStaffUpdate(event) {event.preventDefault();if(!state.currentIssue)return;const payload={status:$("#staff-status").value,comment:$("#staff-note").value.trim()||null,is_internal:$("#internal-note").checked};try{await api(`/staff/issues/${state.currentIssue.id}/status`,{method:"PATCH",body:JSON.stringify(payload)});toast("Issue status updated.","success");await openIssue(state.currentIssue.id);}catch(e){toast(e.message,"error");}}
-async function loadAdmin() {try{const [data,issues]=await Promise.all([api("/admin/analytics"),api("/staff/issues?size=10")]);const allStatus=data.by_status||[];const total=data.total_issues||0;const open=allStatus.filter(x=>!["resolved","closed"].includes(x.status)).reduce((s,x)=>s+x.count,0);const progress=allStatus.find(x=>x.status==="in_progress")?.count||0;const resolved=allStatus.filter(x=>["resolved","closed"].includes(x.status)).reduce((s,x)=>s+x.count,0);const m=$("#admin-metrics");if(m)m.innerHTML=metric("Total issues",total,"All complaint records")+metric("Open issues",open,"Not yet closed")+metric("In progress",progress,"Work underway")+metric("Resolved / closed",resolved,"Completed lifecycle");
-  const statusNode=$("#admin-status-bars");if(statusNode)statusNode.innerHTML=allStatus.length?allStatus.map(x=>bar(x.status,x.count,total)).join(""):'<p class="small muted">No issue data yet.</p>';const catNode=$("#admin-category-bars");if(catNode)catNode.innerHTML=(data.by_category||[]).map(x=>bar(x.category,x.count,total)).join("")||'<p class="small muted">No category data yet.</p>';const issueNode=$("#admin-issues");if(issueNode)issueNode.innerHTML=(issues.items||[]).length?issues.items.map(i=>issueRow(i)).join(""):'<p class="small muted">No complaints yet.</p>';}
- catch(e){toast(e.message,"error");const n=$("#admin-status-bars");if(n)n.innerHTML=errorState("Could not load analytics",e.message);}}
-function bar(label,count,total){const pct=total?Math.round(count/total*100):0;return `<div class="bar-row"><span>${esc(human(label))}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><strong>${esc(count)}</strong></div>`;}
-async function createStaff(event){event.preventDefault();const payload={name:$("#new-staff-name").value.trim(),email:$("#new-staff-email").value.trim(),category_id:Number($("#new-staff-category").value)};try{const u=await api("/admin/staff",{method:"POST",body:JSON.stringify(payload)});state.modal=null;render();loadAdmin();toast(`Staff account created for ${u.email}.`,"success");}catch(e){toast(e.message,"error");}}
+function bar(label, count, total) { const pct = total ? Math.max(3, Math.round((count / total) * 100)) : 0; return `<div style="margin:12px 0"><div class="row spread"><span class="small">${esc(label)}</span><strong class="small">${count}</strong></div><div style="height:8px;background:var(--border);border-radius:999px;overflow:hidden;margin-top:6px"><div style="height:100%;width:${pct}%;background:var(--accent);border-radius:999px"></div></div></div>`; }
+async function loadAdmin() {
+  const analyticsNode = $("#admin-status-bars");
+  const categoryNode = $("#admin-category-bars");
+  const extra = $("#admin-analytics-extra");
+  const issueNode = $("#admin-issues");
+  try {
+    const results = await Promise.allSettled([api("/admin/analytics"), api("/staff/issues?size=10")]);
+    const analyticsResult = results[0];
+    const issuesResult = results[1];
+
+    if (analyticsResult.status === "fulfilled") {
+      const data = analyticsResult.value || {};
+      const allStatus = data.by_status || [];
+      const total = Number(data.total_issues || 0);
+      const m = $("#admin-metrics");
+      if (m) {
+        m.innerHTML = metric("Total issues", total, "All complaint records")
+          + metric("Overdue", data.overdue_count || 0, "Past resolution target")
+          + metric("Reopened", data.reopened_count || 0, "Needs more work")
+          + metric("Avg resolution", data.average_resolution_hours == null ? "—" : `${data.average_resolution_hours}h`, "Created to resolved");
+      }
+      if (analyticsNode) {
+        analyticsNode.innerHTML = allStatus.length
+          ? allStatus.map(x => bar(x.status, x.count, total)).join("")
+          : '<p class="small muted">No issue data yet.</p>';
+      }
+      if (categoryNode) {
+        categoryNode.innerHTML = (data.by_category || []).length
+          ? data.by_category.map(x => bar(x.category, x.count, total)).join("")
+          : '<p class="small muted">No category data yet.</p>';
+      }
+      if (extra) {
+        extra.innerHTML = `
+          <div>
+            <h3>Top locations</h3>
+            ${(data.by_location || []).map(x => `<button class="analytics-row" data-action="admin-location-filter" data-location-id="${x.location_id}"><span class="small">${esc(x.location)}</span><strong>${x.count}</strong></button>`).join("") || '<p class="small muted">No location data.</p>'}
+          </div>
+          <div>
+            <h3>Top problem types</h3>
+            ${(data.by_problem_type || []).map(x => `<div class="analytics-row"><span class="small">${esc(x.problem_type)}</span><strong>${x.count}</strong></div>`).join("") || '<p class="small muted">No problem-type data.</p>'}
+          </div>`;
+      }
+    } else {
+      const message = analyticsResult.reason?.message || "Analytics service is unavailable.";
+      if (analyticsNode) analyticsNode.innerHTML = errorState("Could not load analytics", message);
+      if (categoryNode) categoryNode.innerHTML = `<p class="small muted">${esc(message)}</p>`;
+    }
+
+    // Load recent complaints independently so an analytics failure cannot blank
+    // the complaint list (and vice versa).
+    if (issuesResult.status === "fulfilled") {
+      const items = issuesResult.value?.items || [];
+      if (issueNode) {
+        issueNode.innerHTML = items.length
+          ? items.map(i => issueRow(i)).join("")
+          : '<div class="empty-state"><div class="empty-icon">✓</div><h3>No complaints yet</h3><p>New submitted complaints will appear here.</p></div>';
+      }
+    } else if (issueNode) {
+      issueNode.innerHTML = errorState("Could not load recent complaints", issuesResult.reason?.message || "Complaint service is unavailable.");
+    }
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+async function createStaff(event){event.preventDefault();const payload={name:$("#new-staff-name").value.trim(),email:$("#new-staff-email").value.trim(),category_id:Number($("#new-staff-category").value)};try{const u=await api("/admin/staff",{method:"POST",body:JSON.stringify(payload)});state.modal=null;render();loadAdmin();toast(u.development_set_password_url?`Staff created. Open the set-password link from the server log.`:`Staff account created for ${u.email}.`,"success");}catch(e){toast(e.message,"error");}}
 async function loadNotifications(){try{const data=await api("/notifications?size=50");state.notifications=data.items||[];const n=$("#notifications-list");if(!n)return;n.innerHTML=state.notifications.length?state.notifications.map(x=>`<div class="notice-row ${x.is_read?"":"unread"}"><div class="row spread wrap"><div class="notice-title">${esc(x.title)}</div>${x.is_read?'<span class="chip">Read</span>':'<button class="btn btn-secondary btn-small" data-action="mark-read" data-id="'+x.id+'">Mark as read</button>'}</div><div class="notice-message">${esc(x.message)}</div><div class="notice-date">${esc(date(x.created_at,true))}</div>${x.issue_id?`<button class="btn btn-quiet btn-small" data-action="open-issue" data-id="${x.issue_id}">View issue →</button>`:""}</div>`).join(""):'<div class="empty-state"><div class="empty-icon">♧</div><h3>You are all caught up</h3><p>Notifications about complaint updates will appear here.</p></div>';renderHeaderOnly();}catch(e){toast(e.message,"error");}}
 function renderHeaderOnly(){const app=$("#app");const old=app.querySelector(".topbar");if(old){const tmp=document.createElement("div");tmp.innerHTML=header(state.page);old.replaceWith(tmp.firstElementChild);}}
 async function markRead(id){try{await api(`/notifications/${id}`,{method:"PATCH",body:JSON.stringify({is_read:true})});await loadNotifications();toast("Notification marked as read.","success");}catch(e){toast(e.message,"error");}}
@@ -384,6 +502,7 @@ document.addEventListener("click", async event=>{
   const el=event.target.closest("[data-action]");if(!el)return;const action=el.dataset.action;
   if(action==="toggle-menu"){$("#main-nav")?.classList.toggle("open");return;}
   if(action==="open-issue"){event.preventDefault();await openIssue(Number(el.dataset.id));return;}
+  if(action==="admin-location-filter"){ toast(`Location #${el.dataset.locationId} has ${el.querySelector("strong")?.textContent || 0} reported issue(s).`, "success"); return;}
   if(action==="edit-issue"){await openEditIssue(Number(el.dataset.id));return;}
   if(action==="delete-issue"){try{await deleteIssue(Number(el.dataset.id));}catch(error){toast(error.message,"error");}return;}
   if(action==="confirm-delete-issue"){await confirmDeleteIssue();return;}
@@ -394,18 +513,21 @@ document.addEventListener("click", async event=>{
   if(action==="smart-draft"){smartDraft();return;}
   if(action==="cancel-review"){$("#review-overlay")?.remove();state.pendingIssue=null;return;}
   if(action==="submit-reviewed"){await createIssueNow();return;}
-  if(action==="google-signin"){state.page="google-signin";render();return;}
-  if(action==="register"){state.page="signup";render();return;}
-  if(action==="reset-password"){state.page="reset-password";render();return;}
+  if(action==="google-signin"){render();return;}
   if(action==="back-to-login"){state.page="login";render();return;}
-  if(action==="staff-login"){const user=state.demoUsers.find(item=>item.role==="staff"&&item.email.startsWith("maintenance-"))||state.demoUsers.find(item=>item.role==="staff");if(user){state.userId=user.id;localStorage.setItem("hf.userId",String(user.id));$("#demo-user").value=String(user.id);}toast("Choose Sign in to continue as demo staff.");return;}
-  if(action==="admin-login"){const user=state.demoUsers.find(item=>item.role==="administrator");if(user){state.userId=user.id;localStorage.setItem("hf.userId",String(user.id));$("#demo-user").value=String(user.id);}toast("Choose Sign in to continue as demo administrator.");return;}
-  if(action==="logout"){state.loggedIn=false;localStorage.removeItem("hf.loggedIn");state.user=null;state.page="login";render();return;}
+  if(action==="staff-login"){state.page="staff-login";render();return;}
+  if(action==="admin-login"){state.page="staff-login";render();return;}
+  if(action==="logout"){try{await api("/auth/logout",{method:"POST"});}catch{}state.loggedIn=false;state.user=null;state.page="login";render();return;}
   if(action==="confirm-delete-account"){state.modal="delete";render();return;}
-  if(action==="delete-account"){try{await api("/me",{method:"DELETE"});state.modal=null;state.loggedIn=false;localStorage.removeItem("hf.loggedIn");toast("Your demo account has been deactivated.","success");render();}catch(e){toast(e.message,"error");}return;}
+  if(action==="delete-account"){try{await api("/me",{method:"DELETE"});await api("/auth/logout",{method:"POST"});state.modal=null;state.loggedIn=false;state.user=null;toast("Your account has been deleted and complaint history anonymised.","success");render();}catch(e){toast(e.message,"error");}return;}
   if(action==="close-modal"){if(event.target===el || el.tagName==="BUTTON"){state.modal=null;render();if(state.page==="admin")loadAdmin();if(state.page==="issue"&&state.currentIssue)openIssue(state.currentIssue.id);}return;}
   if(action==="open-staff-modal"){state.modal="staff";render();loadAdmin();return;}
   if(action==="show-reopen"){state.modal="reopen";render();return;}
+  if(action==="similar-cancel"){el.closest(".modal-backdrop")?.remove();state.pendingIssue=null;return;}
+  if(action==="similar-continue"){el.closest(".modal-backdrop")?.remove();if(state.pendingIssue)await showReviewOverlay(state.pendingIssue);return;}
+  if(action==="similar-me-too"){const issueId=Number(el.dataset.id);try{await api(`/issues/${issueId}/confirmations`,{method:"POST"});toast("You were added as Me too on the existing complaint.","success");el.closest(".modal-backdrop")?.remove();state.pendingIssue=null;await openIssue(issueId);}catch(e){toast(e.message,"error");}return;}
+  if(action==="cancel-review"){el.closest(".modal-backdrop")?.remove();state.pendingIssue=null;return;}
+  if(action==="submit-reviewed"){const payload=state.pendingIssue;if(!payload)return;el.disabled=true;try{const created=await api("/issues",{method:"POST",body:JSON.stringify(payload)});el.closest(".modal-backdrop")?.remove();state.pendingIssue=null;toast("Complaint submitted successfully.","success");await openIssue(created.id);}catch(e){el.disabled=false;toast(e.message,"error");}return;}
   if(action==="resolution-feedback"){const payload={outcome:el.dataset.outcome,comment:$("#resolution-comment")?.value.trim()||null};try{await api(`/issues/${el.dataset.id}/resolution-feedback`,{method:"POST",body:JSON.stringify(payload)});toast(payload.outcome==="resolved"?"Thanks for confirming the fix.":payload.outcome==="not_resolved"?"Thanks for the feedback.":"Reopening requested.","success");await openIssue(Number(el.dataset.id));}catch(e){toast(e.message,"error");}return;}
   if(action==="notifications"){state.page="notifications";render();loadNotifications();return;}
   if(action==="mark-read"){await markRead(Number(el.dataset.id));return;}
@@ -413,16 +535,24 @@ document.addEventListener("click", async event=>{
 });
 document.addEventListener("submit", async event=>{
   if(event.target.id==="login-form"){event.preventDefault();await login();}
+  if(event.target.id==="role-login-form"){event.preventDefault();try{await ensureCsrf();const user=await api("/auth/login",{method:"POST",body:JSON.stringify({email:$("#role-login-email").value.trim(),password:$("#role-login-password").value})});if(!["staff","administrator"].includes(user.role)){await api("/auth/logout",{method:"POST"}).catch(()=>{});throw new Error("Only staff or administrator accounts can use manual login.");}state.user=user;state.loggedIn=true;state.userId=Number(user.id);localStorage.setItem("hf.loggedIn","true");localStorage.setItem("hf.userId",String(user.id));state.page=user.role==="administrator"?"admin":"staff";await loadBaseData();render();if(state.page==="staff")loadStaffQueue();else loadAdmin();}catch(e){toast(e.message,"error");}}
+  if(event.target.id==="profile-form"){event.preventDefault();try{state.user=await api("/me",{method:"PATCH",body:JSON.stringify({name:$("#profile-name").value.trim()})});toast("Profile updated.","success");render();}catch(e){toast(e.message,"error");}}
+  if(event.target.id==="password-form"){event.preventDefault();try{await api("/me/password",{method:"POST",body:JSON.stringify({current_password:$("#current-password").value,new_password:$("#new-password-profile").value})});toast("Password changed successfully.","success");event.target.reset();}catch(e){toast(e.message,"error");}}
+  if(event.target.id==="set-password-form"){event.preventDefault();const token=new URLSearchParams(location.search).get("set-password");try{const r=await api("/auth/reset-password",{method:"POST",body:JSON.stringify({token,password:$("#set-password").value})});toast(r.message,"success");history.replaceState({},"",location.pathname);state.page="staff-login";render();}catch(e){toast(e.message,"error");}}
   if(event.target.id==="issue-form")await submitIssue(event);
   if(event.target.id==="edit-issue-form")await saveIssueEdits(event);
   if(event.target.id==="staff-update-form")await saveStaffUpdate(event);
   if(event.target.id==="staff-create-form")await createStaff(event);
+  if(event.target.id==="admin-category-form"){event.preventDefault();try{await api(`/admin/categories/${$("#admin-category-id").value}`,{method:"PATCH",body:JSON.stringify({resolution_target_hours:Number($("#admin-target-hours").value)})});toast("Resolution target saved.","success");await loadBaseData();render();loadAdmin();}catch(e){toast(e.message,"error");}}
+  if(event.target.id==="admin-category-create-form"){event.preventDefault();try{await api("/admin/categories",{method:"POST",body:JSON.stringify({name:$("#admin-new-category-name").value.trim(),description:$("#admin-new-category-description").value.trim()||null,resolution_target_hours:Number($("#admin-new-category-hours").value)})});toast("Category added.","success");await loadBaseData();render();loadAdmin();}catch(e){toast(e.message,"error");}}
+  if(event.target.id==="admin-problem-form"){event.preventDefault();try{await api("/admin/problem-types",{method:"POST",body:JSON.stringify({category_id:Number($("#admin-problem-category").value),name:$("#admin-problem-name").value.trim(),description:$("#admin-problem-description").value.trim()||null})});toast("Problem type added.","success");await loadBaseData();render();loadAdmin();}catch(e){toast(e.message,"error");}}
+  if(event.target.id==="admin-location-form"){event.preventDefault();try{await api("/admin/locations",{method:"POST",body:JSON.stringify({wing_id:Number($("#admin-wing-id").value),area_type:$("#admin-area-type").value.trim(),description:$("#admin-location-description").value.trim()||null})});toast("Location added.","success");await loadBaseData();render();loadAdmin();}catch(e){toast(e.message,"error");}}
+  if(event.target.id==="admin-asset-form"){event.preventDefault();try{await api("/admin/assets",{method:"POST",body:JSON.stringify({hostel_id:Number($("#admin-asset-hostel").value),name:$("#admin-asset-name").value.trim(),asset_type:$("#admin-asset-type").value.trim(),location_ids:[Number($("#admin-asset-location").value)]})});toast("Asset and location link added.","success");await loadBaseData();render();loadAdmin();}catch(e){toast(e.message,"error");}}
   if(event.target.id==="reopen-form"){event.preventDefault();const reason=$("#reopen-reason").value.trim();try{await api(`/issues/${state.currentIssue.id}/resolution-feedback`,{method:"POST",body:JSON.stringify({outcome:"reopen_requested",comment:reason})});state.modal=null;toast("Reopening requested. The issue has been marked for review.","success");await openIssue(state.currentIssue.id);}catch(e){toast(e.message,"error");}}
 });
 document.addEventListener("change", async event=>{
   const id=event.target.id;
   try {
-    if(id==="demo-user"){state.userId=Number(event.target.value);localStorage.setItem("hf.userId",String(state.userId));}
     if(id==="hostel-select")await updateFloors();if(id==="floor-select")await updateWings();if(id==="wing-select")await updateAreas();if(id==="area-select")toggleRoomAsset();if(id==="category-select")await updateProblemTypes();
     if(id==="community-search"){state.search=event.target.value;state.listPage=1;renderCommunityList();}
     if(id==="filter-status"){state.filters.status=event.target.value;state.listPage=1;renderCommunityList();}
@@ -435,7 +565,13 @@ document.addEventListener("input",event=>{if(event.target.id==="community-search
 document.addEventListener("keydown",event=>{if(event.key==="Escape"&&state.modal){state.modal=null;render();}});
 
 (async function boot(){
+  await ensureCsrf();
+  const params=new URLSearchParams(location.search);
+  const verify=params.get("verify");
+  const setPassword=params.get("set-password");
+  if(verify){try{const r=await api("/auth/verify",{method:"POST",body:JSON.stringify({token:verify})});toast(r.message,"success");history.replaceState({},"",location.pathname);}catch(e){toast(e.message,"error");}state.page="login";}
+  else if(setPassword){state.loggedIn=false;state.page="set-password";}
+  else {try{state.user=await api("/me");state.loggedIn=true;state.page=state.user.role==="administrator"?"admin":state.user.role==="staff"?"staff":"dashboard";}catch{state.loggedIn=false;state.page="login";}}
   try { await loadBaseData(); } catch(e) { console.warn("Initial catalog load failed",e); }
-  if(state.loggedIn){try{state.user=await api("/me");state.page=state.user.role==="administrator"?"admin":state.user.role==="staff"?"staff":"dashboard";}catch{state.loggedIn=false;localStorage.removeItem("hf.loggedIn");state.page="login";}}
-  render();if(state.loggedIn){if(state.page==="dashboard")loadDashboard();else if(state.page==="staff")loadStaffQueue();else if(state.page==="admin")loadAdmin();}
+  render(); if(state.page==="login")initGoogle(); else if(state.page==="dashboard")loadDashboard();else if(state.page==="staff")loadStaffQueue();else if(state.page==="admin")loadAdmin();
 })();
