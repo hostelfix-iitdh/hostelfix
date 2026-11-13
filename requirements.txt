@@ -13,3 +13,9 @@ argon2-cffi==25.1.0
 # Quality and coverage tooling for MS-4
 pytest-cov==7.0.0
 ruff==0.14.3
+
+python-multipart==0.0.20
+google-auth==2.62.2
+google-genai==3.2.0
+email-validator==2.3.0
+playwright==1.65.1
