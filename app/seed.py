@@ -5,13 +5,13 @@ from datetime import date, timedelta
 from sqlalchemy import select
 from argon2 import PasswordHasher
 from app.db.session import SessionLocal
+from app.core.role_credentials import ADMIN_CREDENTIALS, STAFF_CREDENTIALS
 from app.models import (Hostel, Floor, Wing, Location, Asset, AssetLocation,
                         Category, ProblemType, User, Issue, IssueUpdate, IssueConfirmation,
                         IssueResolutionFeedback, Notification)
 
 random.seed(20261029)
 SEED_DATE = date(2026, 10, 29)
-DEMO_PASSWORD_HASH = PasswordHasher().hash("HostelFix-Demo-2026!")
 AREAS = ["toilet", "bathroom", "washing_machine_area", "cloth_drying_area", "corridor", "lift_lobby", "drinking_water_area", "room"]
 PROBLEMS = {
     "Maintenance": [
@@ -111,7 +111,21 @@ def seed(reset_issues=False):
     try:
         if db.scalar(select(Hostel.id).limit(1)):
             if not reset_issues:
-                print("Seed data already exists; skipping. Use --reset-demo-issues to regenerate the 200 synthetic issues.")
+                for u in db.query(User).all():
+                    if u.email.endswith("@example.test"):
+                        u.email = u.email.replace("@example.test", "@iitdh.ac.in")
+                    u.is_verified = True
+                    if u.role == "student":
+                        # Student accounts must use Google Sign-In only.
+                        u.password_hash = None
+                fixed_accounts = [ADMIN_CREDENTIALS, *STAFF_CREDENTIALS]
+                for account in fixed_accounts:
+                    user = db.query(User).filter(User.email == account["email"], User.deleted_at.is_(None)).first()
+                    if user:
+                        user.password_hash = account["password_hash"]
+                        user.is_verified = True
+                db.commit()
+                print("Seed data already exists; ensured demo accounts are verified.")
                 return
             # This is a demo-only reset: rebuild all deterministic synthetic data cleanly.
             for model in (Notification, IssueResolutionFeedback, IssueConfirmation, IssueUpdate, Issue,
@@ -129,7 +143,7 @@ def seed(reset_issues=False):
                     for area in AREAS:
                         loc = Location(wing=wing, area_type=area, description=f"{area.replace('_',' ').title()} - {hostel.name}, Floor {floor_no}, Wing {wing_name}")
                         db.add(loc); location_rows.append(loc)
-        categories = [Category(name=name, description=f"{name} complaint category") for name in PROBLEMS]
+        categories = [Category(name=name, description=f"{name} complaint category", resolution_target_hours=72 if name == "Housekeeping" else 120) for name in PROBLEMS]
         db.add_all(categories); db.flush()
         ptypes = []
         for category in categories:
@@ -137,12 +151,29 @@ def seed(reset_issues=False):
                 ptypes.append(ProblemType(category_id=category.id, name=name, requires_description=(name == "Other")))
         db.add_all(ptypes)
         users = []
+        # Students authenticate only with Google. Their passwords are intentionally NULL.
         for i in range(1, 41):
-            users.append(User(name=f"Demo Student {i:02d}", email=f"student{i:02d}@example.test", role="student", password_hash=DEMO_PASSWORD_HASH))
-        for cat in categories:
-            for staff_number in (1, 2):
-                users.append(User(name=f"Demo {cat.name} Staff {staff_number}", email=f"{cat.name.lower()}-staff{staff_number}@example.test", role="staff", category_id=cat.id, password_hash=DEMO_PASSWORD_HASH))
-        users.append(User(name="Demo Administrator", email="admin@example.test", role="administrator", password_hash=DEMO_PASSWORD_HASH))
+            users.append(User(name=f"Demo Student {i:02d}", email=f"student{i:02d}@iitdh.ac.in", role="student", password_hash=None, is_verified=True))
+
+        category_by_name = {category.name: category for category in categories}
+        for account in STAFF_CREDENTIALS:
+            category = category_by_name[account["category"]]
+            users.append(User(
+                name=account["name"],
+                email=account["email"],
+                role="staff",
+                category_id=category.id,
+                password_hash=account["password_hash"],
+                is_verified=True,
+            ))
+
+        users.append(User(
+            name=ADMIN_CREDENTIALS["name"],
+            email=ADMIN_CREDENTIALS["email"],
+            role="administrator",
+            password_hash=ADMIN_CREDENTIALS["password_hash"],
+            is_verified=True,
+        ))
         db.add_all(users)
         assets = []
         for hostel in hostels:
@@ -189,10 +220,10 @@ def seed(reset_issues=False):
                           service_date=(SEED_DATE - timedelta(days=i % 14) if category.name == "Housekeeping" else None),
                           due_date=(SEED_DATE+timedelta(days=random.randint(-5,14))))
             db.add(issue); db.flush(); issues.append(issue)
-            db.add(IssueUpdate(issue_id=issue.id, actor_id=reporter.id, old_status=None, new_status="submitted", comment="Synthetic initial report"))
+            db.add(IssueUpdate(issue_id=issue.id, actor_id=reporter.id, actor_role=reporter.role, old_status=None, new_status="submitted", comment="Synthetic initial report"))
             if status != "submitted":
                 actor = next((staff_user for staff_user in staff if staff_user.category_id == category.id), staff[0])
-                db.add(IssueUpdate(issue_id=issue.id, actor_id=actor.id, old_status="submitted", new_status=status, comment="Synthetic status history"))
+                db.add(IssueUpdate(issue_id=issue.id, actor_id=actor.id, actor_role=actor.role, old_status="submitted", new_status=status, comment="Synthetic status history"))
             if i % 4 == 0:
                 other_students = [student for student in students if student.id != reporter.id]
                 if other_students:

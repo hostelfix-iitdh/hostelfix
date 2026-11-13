@@ -1,14 +1,33 @@
-from fastapi import Header, HTTPException, Depends
+from fastapi import Header, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.models import User
+from app.models import User, Session as UserSession
+from app.core.config import settings
+from app.services.security import token_hash, utcnow
 
-def get_actor(x_user_id: int = Header(..., alias="X-User-Id"), db: Session = Depends(get_db)) -> User:
-    """Development-only identity shim. Replace with real authentication before production."""
-    user = db.get(User, x_user_id)
-    if not user or user.deleted_at:
-        raise HTTPException(status_code=401, detail="Unknown development user; provide a valid X-User-Id.")
-    return user
+
+def get_actor(request: Request, x_user_id: int | None = Header(default=None, alias="X-User-Id"), db: Session = Depends(get_db)) -> User:
+    raw = request.cookies.get("hf_session")
+    if raw:
+        session = db.query(UserSession).filter(UserSession.token_hash == token_hash(raw), UserSession.expires_at > utcnow()).first()
+        if session:
+            user = db.get(User, session.user_id)
+            if user and not user.deleted_at:
+                return user
+    if settings.environment != "production" and x_user_id is not None:
+        user = db.get(User, x_user_id)
+        if user and not user.deleted_at:
+            return user
+    raise HTTPException(401, "Authentication required")
+
+
+def require_csrf(request: Request):
+    if request.method in {"GET", "HEAD", "OPTIONS"}:
+        return
+    cookie = request.cookies.get("hf_csrf"); header = request.headers.get("X-CSRF-Token")
+    if not cookie or not header or cookie != header:
+        raise HTTPException(403, "CSRF validation failed")
+
 
 def require_role(*roles):
     def checker(user: User = Depends(get_actor)):
