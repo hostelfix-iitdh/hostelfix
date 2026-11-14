@@ -59,7 +59,47 @@ async function loadBaseData() {
 function toast(message, type="") {
   const region=$("#toast-region"); const node=document.createElement("div"); node.className=`toast ${type}`; node.textContent=message; region.appendChild(node); setTimeout(()=>node.remove(),4200);
 }
-function setPage(page) { state.page=page; state.modal=null; render(); if(page==="login")initGoogle(); if(page==="dashboard") loadDashboard(); if(page==="report") initReportForm(); if(page==="community") loadCommunity(); if(page==="my-reports") loadMyReports(); if(page==="profile") loadProfile(); if(page==="staff") loadStaffQueue(); if(page==="admin") loadAdmin(); }
+function setPage(page) {
+  state.page=page;
+  state.modal=null;
+  if (page !== "login" && page !== "staff-login" && page !== "admin-login") {
+    history.replaceState(null, "", `#${page}`);
+  }
+  render();
+  if(page==="login")initGoogle();
+  if(page==="dashboard") loadDashboard();
+  if(page==="report") initReportForm();
+  if(page==="community") loadCommunity();
+  if(page==="my-reports") loadMyReports();
+  if(page==="profile") loadProfile();
+  if(page==="staff") loadStaffQueue();
+  if(page==="admin") loadAdmin();
+}
+function pageFromHash() {
+  const hash = window.location.hash.replace(/^#/, "").trim().toLowerCase();
+  if (hash === "staff-login" || hash === "admin-login") return "staff-login";
+  if (hash === "login" || hash === "") return "login";
+  return null;
+}
+function syncHashRoute() {
+  const route = pageFromHash();
+  if (route) {
+    state.loggedIn = false;
+    state.user = null;
+    state.page = route;
+    render();
+    if (route === "login") initGoogle();
+    return true;
+  }
+  return false;
+}
+window.addEventListener("hashchange", () => {
+  if (!syncHashRoute() && state.loggedIn) {
+    const page = window.location.hash.replace(/^#/, "").trim().toLowerCase();
+    const allowed = ["dashboard","report","community","issue","my-reports","profile","staff","admin","notifications"];
+    if (allowed.includes(page)) setPage(page);
+  }
+});
 function header(active) {
   const items=navItems();
   return `<header class="topbar"><a class="brand" href="#dashboard" data-page="${isStaff()?"staff":"dashboard"}">HostelFix</a>
@@ -565,13 +605,55 @@ document.addEventListener("input",event=>{if(event.target.id==="community-search
 document.addEventListener("keydown",event=>{if(event.key==="Escape"&&state.modal){state.modal=null;render();}});
 
 (async function boot(){
+  // Render the authentication route immediately. Do not wait for the API/CSRF
+  // bootstrap: the E2E suite and real users must be able to see the login page
+  // even when the backend is still starting.
+  const explicitAuthRoute = syncHashRoute();
+  if (!explicitAuthRoute) {
+    render();
+    initGoogle();
+  }
+
   await ensureCsrf();
+
   const params=new URLSearchParams(location.search);
   const verify=params.get("verify");
   const setPassword=params.get("set-password");
-  if(verify){try{const r=await api("/auth/verify",{method:"POST",body:JSON.stringify({token:verify})});toast(r.message,"success");history.replaceState({},"",location.pathname);}catch(e){toast(e.message,"error");}state.page="login";}
-  else if(setPassword){state.loggedIn=false;state.page="set-password";}
-  else {try{state.user=await api("/me");state.loggedIn=true;state.page=state.user.role==="administrator"?"admin":state.user.role==="staff"?"staff":"dashboard";}catch{state.loggedIn=false;state.page="login";}}
+
+  if(verify){
+    try{
+      const r=await api("/auth/verify",{method:"POST",body:JSON.stringify({token:verify})});
+      toast(r.message,"success");
+      history.replaceState({},"",location.pathname);
+    }catch(e){toast(e.message,"error");}
+    state.loggedIn=false;
+    state.page="login";
+  } else if(setPassword){
+    state.loggedIn=false;
+    state.page="set-password";
+  } else if(!explicitAuthRoute){
+    try{
+      state.user=await api("/me");
+      state.loggedIn=true;
+      state.page=state.user.role==="administrator"?"admin":state.user.role==="staff"?"staff":"dashboard";
+    }catch{
+      state.loggedIn=false;
+      state.page="login";
+    }
+  }
+
+  // Explicit #login/#staff-login routes must remain on their authentication
+  // screens even if the catalog API is slow or unavailable.
+  if (explicitAuthRoute) {
+    render();
+    if (state.page === "login") initGoogle();
+    return;
+  }
+
   try { await loadBaseData(); } catch(e) { console.warn("Initial catalog load failed",e); }
-  render(); if(state.page==="login")initGoogle(); else if(state.page==="dashboard")loadDashboard();else if(state.page==="staff")loadStaffQueue();else if(state.page==="admin")loadAdmin();
+  render();
+  if(state.page==="login")initGoogle();
+  else if(state.page==="dashboard")loadDashboard();
+  else if(state.page==="staff")loadStaffQueue();
+  else if(state.page==="admin")loadAdmin();
 })();
