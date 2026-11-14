@@ -5,6 +5,7 @@ class IssueCreate(BaseModel):
     description: str = Field(min_length=10, max_length=5000)
     location_id: int = Field(gt=0)
     problem_type_id: int = Field(gt=0)
+    asset_id: int | None = Field(default=None, gt=0)
     room_label: str | None = Field(default=None, max_length=80)
     service_date: date | None = None
     is_public: bool = True
@@ -13,6 +14,7 @@ class IssuePatch(BaseModel):
     description: str | None = Field(default=None, min_length=10, max_length=5000)
     location_id: int | None = Field(default=None, gt=0)
     problem_type_id: int | None = Field(default=None, gt=0)
+    asset_id: int | None = Field(default=None, gt=0)
     room_label: str | None = Field(default=None, max_length=80)
     service_date: date | None = None
     is_public: bool | None = None
@@ -31,6 +33,7 @@ class IssueOut(ORMModel):
     description: str
     location_id: int
     problem_type_id: int
+    asset_id: int | None
     status: str
     service_date: date | None
     is_public: bool
@@ -41,6 +44,7 @@ class IssueUpdateOut(ORMModel):
     id: int
     issue_id: int
     old_status: str | None
+    actor_role: str
     new_status: str
     comment: str | None
     created_at: datetime

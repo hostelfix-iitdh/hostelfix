@@ -6,12 +6,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
-from app.routers.deps import require_csrf
 from app.core.config import settings
 from app.core.errors import http_exception_handler, validation_exception_handler, unexpected_exception_handler
 from app.routers import health, locations, issues, notifications, admin, profile, demo, ai
 from app.db.session import SessionLocal
 from app.services.lifecycle import auto_close_resolved_issues
+from app.routers import auth
+
 
 async def _auto_close_loop():
     if settings.database_url.startswith("sqlite"):
@@ -42,7 +43,7 @@ app = FastAPI(lifespan=lifespan, title=settings.app_name, version="1.0.0",
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, unexpected_exception_handler)
-from app.routers import auth
+
 
 class CSRFMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

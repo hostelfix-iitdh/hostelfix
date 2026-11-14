@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, Header
-from sqlalchemy import or_, and_
+from sqlalchemy import or_
 from datetime import datetime, timedelta, date
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.models import Issue, IssueUpdate, IssueConfirmation, IssueResolutionFeedback, Location, ProblemType, Notification, User, Asset, AssetLocation, Category
+from app.models import Issue, IssueUpdate, IssueConfirmation, IssueResolutionFeedback, Location, ProblemType, Notification, User, Asset, AssetLocation
 from app.schemas.issue import IssueCreate, IssuePatch, IssueOut, StaffIssueOut, IssueUpdateOut, StatusUpdate, ResolutionFeedbackCreate
 from app.routers.deps import get_actor, require_role
 from app.core.taxonomy import validate_problem_location

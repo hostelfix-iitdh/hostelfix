@@ -110,7 +110,7 @@ def test_admin_can_create_staff_account(client):
     except StopIteration:
         pass
     response = client.post("/api/v1/admin/staff", headers={"X-User-Id": str(admin_id)}, json={
-        "name": "Maintenance Staff", "email": "maintenance@example.test", "category_id": category.id
+        "name": "Maintenance Staff", "email": "maintenance@iitdh.ac.in", "category_id": category.id
     })
     assert response.status_code == 201, response.text
     assert response.json()["role"] == "staff"
@@ -268,3 +268,66 @@ def test_another_user_cannot_edit_or_delete_report(client):
 
     assert edited.status_code == 403
     assert deleted.status_code == 403
+
+def test_similar_open_complaints_endpoint_and_room_exclusion(client):
+    location_id, problem_type_id, user_id = seed_minimal(client)
+    created = create_test_issue(client, user_id=user_id, location_id=location_id, problem_type_id=problem_type_id)
+    assert created.status_code == 201
+    other = User(name="Other Student", email="other2@example.test", role="student")
+    generator = client.app.dependency_overrides[get_db](); db = next(generator)
+    db.add(other); db.commit(); other_id = other.id
+    try: next(generator)
+    except StopIteration: pass
+    response = client.get(f"/api/v1/issues/similar?location_id={location_id}&problem_type_id={problem_type_id}", headers={"X-User-Id": str(other_id)})
+    assert response.status_code == 200
+    assert response.json()["items"][0]["id"] == created.json()["id"]
+
+
+def test_status_transitions_and_resolution_feedback(client):
+    location_id, problem_type_id, student_id = seed_minimal(client)
+    created = create_test_issue(client, user_id=student_id, location_id=location_id, problem_type_id=problem_type_id)
+    issue_id = created.json()["id"]
+    generator = client.app.dependency_overrides[get_db](); db = next(generator)
+    category = db.query(Category).filter_by(name="Maintenance").first()
+    staff = User(name="Staff", email="staff2@example.test", role="staff", category_id=category.id, is_verified=True)
+    db.add(staff); db.commit(); staff_id = staff.id
+    try: next(generator)
+    except StopIteration: pass
+    h={"X-User-Id":str(staff_id)}
+    assert client.patch(f"/api/v1/staff/issues/{issue_id}/status",headers=h,json={"status":"resolved"}).status_code==409
+    for status in ("acknowledged","in_progress","resolved"):
+        r=client.patch(f"/api/v1/staff/issues/{issue_id}/status",headers=h,json={"status":status,"comment":"Progress"})
+        assert r.status_code==200, r.text
+    confirmed=client.post(f"/api/v1/issues/{issue_id}/resolution-feedback",headers={"X-User-Id":str(student_id)},json={"outcome":"resolved","comment":"Fixed"})
+    assert confirmed.status_code==201
+    assert confirmed.json()["status"]=="closed"
+    reopened=client.post(f"/api/v1/issues/{issue_id}/resolution-feedback",headers={"X-User-Id":str(student_id)},json={"outcome":"reopen_requested","comment":"Still broken"})
+    assert reopened.status_code==409
+
+
+def test_asset_must_serve_selected_location(client):
+    location_id, problem_type_id, user_id = seed_minimal(client)
+    generator = client.app.dependency_overrides[get_db](); db = next(generator)
+    from app.models import Hostel, Asset
+    hostel=db.query(Hostel).first(); asset=Asset(hostel_id=hostel.id,name="Lift 1",asset_type="lift"); db.add(asset); db.commit(); asset_id=asset.id
+    try: next(generator)
+    except StopIteration: pass
+    r=client.post("/api/v1/issues",headers={"X-User-Id":str(user_id)},json={"title":"Lift issue","description":"The lift is not working and needs inspection.","location_id":location_id,"problem_type_id":problem_type_id,"asset_id":asset_id,"is_public":True})
+    assert r.status_code==422
+
+def test_auto_close_after_seven_days(client):
+    from datetime import datetime, timedelta, timezone
+    from app.services.lifecycle import auto_close_resolved_issues
+    location_id, problem_type_id, student_id = seed_minimal(client)
+    created=create_test_issue(client,user_id=student_id,location_id=location_id,problem_type_id=problem_type_id)
+    issue_id=created.json()["id"]
+    generator=client.app.dependency_overrides[get_db](); db=next(generator)
+    category=db.query(Category).filter_by(name="Maintenance").first()
+    staff=User(name="Staff",email="staff3@iitdh.ac.in",role="staff",category_id=category.id,is_verified=True); admin=User(name="Admin",email="admin3@iitdh.ac.in",role="administrator",is_verified=True); db.add_all([staff,admin]); db.commit() 
+    issue=db.get(__import__('app.models',fromlist=['Issue']).Issue,issue_id); issue.status="resolved"; issue.resolved_at=datetime.now(timezone.utc).replace(tzinfo=None)-timedelta(days=8); db.commit()
+    count=auto_close_resolved_issues(db, datetime.now(timezone.utc).replace(tzinfo=None))
+    assert count==1
+    db.refresh(issue); assert issue.status=="closed"
+    update=issue.updates[-1]; assert update.comment=="auto-closed: no response"
+    try: next(generator)
+    except StopIteration: pass

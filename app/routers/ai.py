@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.models import User, Hostel, Floor, Wing, Location, Asset, Category, ProblemType
 from app.routers.deps import get_actor
-from app.services.ai import provider, SmartReportResult, FieldSuggestion
+from app.services.ai import provider, SmartReportResult
 from app.core.rate_limit import rate_limiter, client_key
 
 router = APIRouter(prefix="/issues", tags=["SmartReport AI"])

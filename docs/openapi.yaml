@@ -1017,6 +1017,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/config:
+    get:
+      tags: [Authentication]
+      summary: Authentication configuration
+      responses:
+        '200': {description: Successful Response}
+  /api/v1/auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterIn'
+      responses:
+        '201': {description: Registration successful}
+        '409': {description: Account already exists}
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login with IIT Dharwad email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginIn'
+      responses:
+        '200': {description: Authenticated}
+        '401': {description: Invalid credentials}
+  /api/v1/auth/google:
+    post:
+      tags: [Authentication]
+      summary: Google Sign-In
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleIn'
+      responses:
+        '200': {description: Authenticated}
+        '403': {description: Non-IIT Dharwad Google account}
+  /api/v1/auth/verify:
+    post:
+      tags: [Authentication]
+      summary: Verify email
+      responses:
+        '200': {description: Email verified}
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request password reset
+      responses:
+        '200': {description: Generic response}
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Set a new password
+      responses:
+        '200': {description: Password reset}
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout
+      responses:
+        '204': {description: Logged out}
+  /api/v1/issues/draft:
+    post:
+      tags: [SmartReport AI]
+      summary: Generate an editable SmartReport draft from text and optional image
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  maxLength: 500
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200': {description: AI draft}
+        '503': {description: AI unavailable; manual reporting remains available}
+        '504': {description: AI timeout}
 components:
   schemas:
     HTTPValidationError:
@@ -1340,6 +1430,25 @@ components:
       required:
       - status
       title: StatusUpdate
+    RegisterIn:
+      type: object
+      required: [name, email, password, consent]
+      properties:
+        name: {type: string, minLength: 2, maxLength: 120}
+        email: {type: string, format: email}
+        password: {type: string, minLength: 10, maxLength: 128}
+        consent: {type: boolean}
+    LoginIn:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string, minLength: 1}
+    GoogleIn:
+      type: object
+      required: [credential]
+      properties:
+        credential: {type: string, minLength: 20}
     ValidationError:
       properties:
         loc:

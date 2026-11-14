@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.models import User, Issue
+from app.models import User
 from app.routers.deps import get_actor
 from app.services.security import hash_password
 

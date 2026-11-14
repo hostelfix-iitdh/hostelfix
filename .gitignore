@@ -24,3 +24,6 @@ htmlcov/
 .vscode/
 .DS_Store
 Thumbs.db
+# Local MS-5 demo role credentials (contains plaintext development passwords)
+# Remove this line only if you intentionally want to version the demo secrets.
+app/core/role_credentials.local.py

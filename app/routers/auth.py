@@ -1,4 +1,3 @@
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
@@ -128,7 +127,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 @router.post("/forgot-password")
 def forgot_password(request: Request, payload: PasswordResetIn, db: Session = Depends(get_db)):
     rate_limiter.check(client_key(request, "forgot"), 5, 900, "Too many password-reset requests. Try again later.")
-    email = str(payload.email).lower();
+    email = str(payload.email).lower()
     if not valid_college_email(email): raise HTTPException(422, "Only exact iitdh.ac.in email addresses are allowed")
     user = db.query(User).filter(User.email == email, User.deleted_at.is_(None)).first()
     if user and user.password_hash:

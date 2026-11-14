@@ -3,7 +3,6 @@ import random
 import argparse
 from datetime import date, timedelta
 from sqlalchemy import select
-from argon2 import PasswordHasher
 from app.db.session import SessionLocal
 from app.core.role_credentials import ADMIN_CREDENTIALS, STAFF_CREDENTIALS
 from app.models import (Hostel, Floor, Wing, Location, Asset, AssetLocation,

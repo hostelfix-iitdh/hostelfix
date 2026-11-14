@@ -1,7 +1,4 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import TypeVar
-
-T = TypeVar("T")
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
