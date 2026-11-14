@@ -1,5 +1,4 @@
 """Semantic problem-to-location constraints shared by issue create and update flows."""
-
 from fastapi import HTTPException
 
 # Explicitly location-bound problem types. Other general problems remain reportable
@@ -17,7 +16,6 @@ PROBLEM_AREA_RULES = {
     "Corridor cleaning": {"corridor"},
     "Cloth drying area cleaning": {"cloth_drying_area"},
 }
-
 
 def validate_problem_location(problem_type, location):
     allowed = PROBLEM_AREA_RULES.get(problem_type.name)
