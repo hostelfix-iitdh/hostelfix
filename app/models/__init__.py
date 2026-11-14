@@ -1,18 +1,32 @@
-from datetime import datetime, date
+from datetime import date, datetime
+
 from sqlalchemy import (
-    Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint,
-    func
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+
 class Base(DeclarativeBase):
     pass
+
 
 class Hostel(Base):
     __tablename__ = "hostels"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True)
-    floors: Mapped[list["Floor"]] = relationship(back_populates="hostel", cascade="all, delete-orphan")
+    floors: Mapped[list["Floor"]] = relationship(
+        back_populates="hostel", cascade="all, delete-orphan"
+    )
+
 
 class Floor(Base):
     __tablename__ = "floors"
@@ -23,6 +37,7 @@ class Floor(Base):
     hostel: Mapped["Hostel"] = relationship(back_populates="floors")
     wings: Mapped[list["Wing"]] = relationship(back_populates="floor", cascade="all, delete-orphan")
 
+
 class Wing(Base):
     __tablename__ = "wings"
     __table_args__ = (UniqueConstraint("floor_id", "wing_name", name="uq_wing_floor_name"),)
@@ -30,7 +45,10 @@ class Wing(Base):
     floor_id: Mapped[int] = mapped_column(ForeignKey("floors.id", ondelete="CASCADE"), index=True)
     wing_name: Mapped[str] = mapped_column(String(5))
     floor: Mapped["Floor"] = relationship(back_populates="wings")
-    locations: Mapped[list["Location"]] = relationship(back_populates="wing", cascade="all, delete-orphan")
+    locations: Mapped[list["Location"]] = relationship(
+        back_populates="wing", cascade="all, delete-orphan"
+    )
+
 
 class Location(Base):
     __tablename__ = "locations"
@@ -42,6 +60,7 @@ class Location(Base):
     wing: Mapped["Wing"] = relationship(back_populates="locations")
     issues: Mapped[list["Issue"]] = relationship(back_populates="location")
 
+
 class Asset(Base):
     __tablename__ = "assets"
     __table_args__ = (UniqueConstraint("hostel_id", "name", name="uq_asset_hostel_name"),)
@@ -51,33 +70,53 @@ class Asset(Base):
     asset_type: Mapped[str] = mapped_column(String(80))
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     hostel: Mapped["Hostel"] = relationship()
-    locations: Mapped[list["AssetLocation"]] = relationship(back_populates="asset", cascade="all, delete-orphan")
+    locations: Mapped[list["AssetLocation"]] = relationship(
+        back_populates="asset", cascade="all, delete-orphan"
+    )
+
 
 class AssetLocation(Base):
     __tablename__ = "asset_locations"
-    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id", ondelete="CASCADE"), primary_key=True)
-    location_id: Mapped[int] = mapped_column(ForeignKey("locations.id", ondelete="CASCADE"), primary_key=True)
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey("assets.id", ondelete="CASCADE"), primary_key=True
+    )
+    location_id: Mapped[int] = mapped_column(
+        ForeignKey("locations.id", ondelete="CASCADE"), primary_key=True
+    )
     asset: Mapped["Asset"] = relationship(back_populates="locations")
     location: Mapped["Location"] = relationship()
+
 
 class Category(Base):
     __tablename__ = "categories"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(80), unique=True)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+<<<<<<< HEAD
     resolution_target_hours: Mapped[int] = mapped_column(Integer, default=168, nullable=False)
     problem_types: Mapped[list["ProblemType"]] = relationship(back_populates="category", cascade="all, delete-orphan")
+=======
+    problem_types: Mapped[list["ProblemType"]] = relationship(
+        back_populates="category", cascade="all, delete-orphan"
+    )
+
+>>>>>>> 674014b3680ed9758c12e5cb16302fa9b00d513d
 
 class ProblemType(Base):
     __tablename__ = "problem_types"
-    __table_args__ = (UniqueConstraint("category_id", "name", name="uq_problem_type_category_name"),)
+    __table_args__ = (
+        UniqueConstraint("category_id", "name", name="uq_problem_type_category_name"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
-    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id", ondelete="CASCADE"), index=True)
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("categories.id", ondelete="CASCADE"), index=True
+    )
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     requires_description: Mapped[bool] = mapped_column(Boolean, default=False)
     category: Mapped["Category"] = relationship(back_populates="problem_types")
     issues: Mapped[list["Issue"]] = relationship(back_populates="problem_type")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -93,6 +132,7 @@ class User(Base):
     smart_report_last_used_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     category: Mapped["Category | None"] = relationship()
+
 
 class Issue(Base):
     __tablename__ = "issues"
@@ -116,6 +156,7 @@ class Issue(Base):
     room_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
     service_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+<<<<<<< HEAD
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     location: Mapped["Location"] = relationship(back_populates="issues")
@@ -125,6 +166,24 @@ class Issue(Base):
     updates: Mapped[list["IssueUpdate"]] = relationship(back_populates="issue", cascade="all, delete-orphan", order_by="IssueUpdate.created_at")
     confirmations: Mapped[list["IssueConfirmation"]] = relationship(back_populates="issue", cascade="all, delete-orphan")
     resolution_feedback: Mapped[list["IssueResolutionFeedback"]] = relationship(back_populates="issue", cascade="all, delete-orphan")
+=======
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    location: Mapped["Location"] = relationship(back_populates="issues")
+    problem_type: Mapped["ProblemType"] = relationship(back_populates="issues")
+    reporter: Mapped["User"] = relationship()
+    updates: Mapped[list["IssueUpdate"]] = relationship(
+        back_populates="issue", cascade="all, delete-orphan", order_by="IssueUpdate.created_at"
+    )
+    confirmations: Mapped[list["IssueConfirmation"]] = relationship(
+        back_populates="issue", cascade="all, delete-orphan"
+    )
+    resolution_feedback: Mapped[list["IssueResolutionFeedback"]] = relationship(
+        back_populates="issue", cascade="all, delete-orphan"
+    )
+
+>>>>>>> 674014b3680ed9758c12e5cb16302fa9b00d513d
 
 class IssueUpdate(Base):
     __tablename__ = "issue_updates"
@@ -141,6 +200,7 @@ class IssueUpdate(Base):
     issue: Mapped["Issue"] = relationship(back_populates="updates")
     actor: Mapped["User"] = relationship()
 
+
 class IssueConfirmation(Base):
     __tablename__ = "issue_confirmations"
     __table_args__ = (UniqueConstraint("issue_id", "user_id", name="uq_confirmation_issue_user"),)
@@ -150,6 +210,7 @@ class IssueConfirmation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     issue: Mapped["Issue"] = relationship(back_populates="confirmations")
     user: Mapped["User"] = relationship()
+
 
 class IssueResolutionFeedback(Base):
     __tablename__ = "issue_resolution_feedback"
@@ -162,17 +223,23 @@ class IssueResolutionFeedback(Base):
     issue: Mapped["Issue"] = relationship(back_populates="resolution_feedback")
     user: Mapped["User"] = relationship()
 
+
 class Notification(Base):
     __tablename__ = "notifications"
-    __table_args__ = (Index("ix_notifications_user_read_created", "user_id", "is_read", "created_at"),)
+    __table_args__ = (
+        Index("ix_notifications_user_read_created", "user_id", "is_read", "created_at"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    issue_id: Mapped[int | None] = mapped_column(ForeignKey("issues.id", ondelete="SET NULL"), nullable=True)
+    issue_id: Mapped[int | None] = mapped_column(
+        ForeignKey("issues.id", ondelete="SET NULL"), nullable=True
+    )
     title: Mapped[str] = mapped_column(String(180))
     message: Mapped[str] = mapped_column(String(500))
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     user: Mapped["User"] = relationship()
+
 
 class EmailToken(Base):
     __tablename__ = "email_tokens"
@@ -181,6 +248,7 @@ class EmailToken(Base):
     token_hash: Mapped[str] = mapped_column(String(255), unique=True)
     purpose: Mapped[str] = mapped_column(String(30))
     expires_at: Mapped[datetime] = mapped_column(DateTime)
+
 
 class Session(Base):
     __tablename__ = "sessions"

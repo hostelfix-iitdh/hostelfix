@@ -37,7 +37,11 @@ jobs:
       - name: Run unit and integration tests
         env:
           DATABASE_URL: "sqlite+pysqlite:///:memory:"
+<<<<<<< HEAD
         run: python -m pytest -m 'not e2e' --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=70
+=======
+        run: python -m pytest -m 'not e2e' --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=65
+>>>>>>> 674014b3680ed9758c12e5cb16302fa9b00d513d
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4

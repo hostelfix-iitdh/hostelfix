@@ -1,6 +1,7 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from argon2 import PasswordHasher
 
 ph = PasswordHasher()
@@ -26,7 +27,7 @@ def token_hash(token: str) -> str:
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def expiry(minutes: int) -> datetime:
