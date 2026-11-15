@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import HTTPException
 from app.core.config import settings
 from app.services.security import valid_college_email
@@ -17,9 +19,11 @@ def verify_google_id_token(credential: str) -> dict:
             credential,
             requests.Request(),
             settings.google_client_id,
+            clock_skew_in_seconds=300,  # tolerate Docker/WSL clock drift
         )
     except Exception as exc:
-        # Never expose the token or its contents to the client/logs.
+        # Log only the reason (never the token) so the real cause is visible in `docker compose logs api`.
+        logging.getLogger("uvicorn.error").warning("Google token verification failed: %s", exc)
         raise HTTPException(401, "Invalid Google ID token. Check that the Google Web Client ID matches the one in .env.") from exc
 
     email = str(claims.get("email", "")).strip().lower()
