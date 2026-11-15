@@ -1,384 +1,354 @@
-# HostelFix — IIT Dharwad
+# HostelFix
 
-HostelFix is a web application for reporting, tracking and managing hostel maintenance and housekeeping issues. The frontend follows the supplied **HostelFix Prototype** in Figma and the MS-1/MS-2 design documents. It includes student pages, staff workflows and an administrator overview, backed by the existing FastAPI API and MySQL database.
+**Report, track and resolve hostel maintenance and housekeeping problems at IIT Dharwad.**
 
-**Repository:** https://github.com/hostelfix-iitdh/hostelfix  
-**Frontend:** HTML, CSS and JavaScript served by Nginx  
-**Backend:** Python, FastAPI, SQLAlchemy and Alembic  
-**Database:** MySQL 8.4  
-**Local startup:** Docker Compose
+[![CI](https://github.com/hostelfix-iitdh/hostelfix/actions/workflows/ci.yml/badge.svg)](https://github.com/hostelfix-iitdh/hostelfix/actions/workflows/ci.yml)
 
-## Included screens and workflows
+HostelFix is a multi-page web application with a FastAPI backend, a MySQL 8 database and a documented REST API. Students report a problem together with its exact location, follow it until it is fixed, and confirm the fix. Staff work through a queue for their own category. Administrators see statistics and manage the service. An AI feature, **SmartReport**, turns a plain-language description (and an optional photo) into an editable draft of the complaint form.
 
-- **Sign in:** IIT Dharwad email/password authentication, student registration with email verification, password reset, profile management, and Google Identity Services sign-in restricted to verified iitdh.ac.in accounts. Account deletion is administrator-managed; there is no self-service delete option.
-- **Dashboard:** personal report metrics, recent reports and quick actions.
-- **Report an Issue:** dependent hostel → floor → wing → area selection; category/problem-type selection; room label and relevant service date; public/private visibility; editable SmartReport draft area; review-before-submit confirmation.
-- **Community Issues:** public-safe issue list, search, status/hostel/floor/wing/area/category/problem filters, sorting, pagination, issue details and “Me too” confirmations for other residents’ reports only (reporters cannot confirm their own issue).
-- **Issue Details:** complaint metadata, status timeline, confirmation count, reporter resolution feedback/reopen request, and authorised staff status updates with optional internal notes.
-- **My Reports:** current user's reports, status filtering and pagination. The reporter can edit or delete a complaint only while it is `submitted`; once staff acknowledge it, both actions are locked.
-- **Profile:** account information, sign out and account deactivation confirmation.
-- **Staff Dashboard:** role/category-limited work queue and status updates.
-- **Admin Dashboard:** issue metrics, status/category charts, staff-account creation with an administrator-selected password, and staff-account deletion.
-- **Notifications:** list and mark notifications as read.
+This project was built for the *Course Project 2026: Build, Test and Ship an AI-Enabled Web Application* (Theme 3, campus services portal).
 
-The layout is responsive and uses the Figma palette, typography, header/navigation, card shapes, field sizes, status chips and accessible focus styles. The backend remains the source of truth for validation and permissions.
+| | |
+|---|---|
+| Repository | https://github.com/hostelfix-iitdh/hostelfix |
+| Team | Narasimha Reddy Boggula (CS26MT002), Aakash Saran V (CS26MT018), Suru Rakesh (CS26MT022) |
+| Backend | Python 3.13, FastAPI, SQLAlchemy, Alembic |
+| Database | MySQL 8.4 |
+| Frontend | Plain HTML, CSS and JavaScript served by Nginx |
+| AI | Gemini API, called from the server only |
+| Packaging | Docker Compose (three containers) |
 
-## Important implementation boundaries
+---
 
-This MS-5 build uses the real authentication and AI paths required for the milestone:
+## Contents
 
-- Server-side session cookies with CSRF protection are used for authenticated browser sessions.
-- Manual registration/login is restricted to `@iitdh.ac.in` accounts. Registration requires consent and email verification.
-- Google Identity Services is supported, and the backend verifies the Google ID token before accepting the login. Only verified Google accounts with the `iitdh.ac.in` hosted domain are accepted.
-- Passwords are stored as Argon2 hashes; plaintext passwords are never stored or returned.
-- SmartReport uses the Gemini Developer API when `GEMINI_API_KEY` is configured. The model receives only the complaint text and optional uploaded image needed for classification.
-- SmartReport can classify image evidence such as a damaged washing machine or faulty/stuck lift and proposes a category/problem type. The user must review the draft before submission.
-- If Gemini is unavailable, times out or reaches the application rate limit, the manual complaint form remains usable.
-- Staff/admin workflows use the same authenticated session mechanism.
-- Seeded data is synthetic. Do not add real student information to the repository.
+1. [Features](#features)
+2. [Quick start](#quick-start)
+3. [Configuration](#configuration)
+4. [Sign-in and demo accounts](#sign-in-and-demo-accounts)
+5. [SmartReport (AI)](#smartreport-ai)
+6. [Complaint lifecycle](#complaint-lifecycle)
+7. [Architecture](#architecture)
+8. [API](#api)
+9. [Tests and quality checks](#tests-and-quality-checks)
+10. [Project layout](#project-layout)
+11. [Security and privacy](#security-and-privacy)
+12. [Known limitations](#known-limitations)
+13. [Troubleshooting](#troubleshooting)
+14. [Documents](#documents)
 
-## Run the project
+---
 
-### Prerequisites
+## Features
 
-- Docker Desktop with Docker Compose on Windows, or Docker Engine and the Compose plugin on Linux/WSL.
-- Git, if cloning the repository.
+**Students**
 
-### Start all services
+- Sign in with their IIT Dharwad Google account (`@iitdh.ac.in` only).
+- Report an issue by choosing hostel, floor, wing and area, then category and problem type. Housekeeping reports can carry a service date, and Room reports an optional room label.
+- Describe the problem in one sentence and let **SmartReport** pre-fill the form.
+- See similar open complaints before submitting, and press **Me too** instead of filing a duplicate.
+- Follow their own reports, with a full status history and in-app notifications.
+- Confirm that a fix worked, or ask for the complaint to be reopened.
+- Edit or delete a complaint only while it is still `submitted`.
+- Browse the **Community Issues** page, which never shows who reported what.
+
+**Staff** (one category each: Maintenance or Housekeeping)
+
+- A work queue limited to their own category, with filters.
+- Move complaints through acknowledged, in progress and resolved, with notes. Rejecting needs a written reason.
+
+**Administrators**
+
+- Statistics: counts by status, category, location and problem type, overdue and reopened complaints, average resolution time.
+- Create staff accounts (the administrator chooses the first password) and delete staff accounts.
+- Maintain categories, problem types, locations, assets and target resolution times.
+
+---
+
+## Quick start
+
+You need **Docker** (with the Compose plugin) and **Git**. Nothing else has to be installed.
 
 ```bash
 git clone https://github.com/hostelfix-iitdh/hostelfix.git
 cd hostelfix
-cp .env.example .env
 docker compose up --build
 ```
 
-The API container waits for MySQL, runs Alembic migrations, loads synthetic seed data when `SEED_ON_STARTUP=true`, and starts FastAPI. Nginx serves the frontend and proxies `/api/` requests to the API service.
+Then open:
 
-Open:
+| What | Address |
+|---|---|
+| The site | http://localhost:8080 |
+| API documentation (Swagger UI) | http://localhost:8000/docs |
+| Alternative API docs (ReDoc) | http://localhost:8000/redoc |
+| Health check | http://localhost:8000/api/v1/health |
 
-- **Frontend:** http://localhost:8080
-- **API root:** http://localhost:8000
-- **Swagger UI:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
+On start-up the API container waits for MySQL, applies the Alembic migrations, loads the synthetic seed data (when `SEED_ON_STARTUP=true`) and then starts the server. The first build takes a few minutes.
 
-The ports can be changed using `WEB_PORT`, `API_PORT` and `MYSQL_PORT` in `.env`. Never commit `.env` or production secrets.
+Every setting has a default, so the site starts **without a `.env` file**. Google sign-in and Gemini need their own keys, described below. Without them the Google button reports that sign-in is not configured, staff and administrators can still sign in with a password, and SmartReport uses its local rules.
 
-### Refresh the 200 synthetic demo issues
+Useful commands:
 
-The seeded issue set uses problem-specific titles, descriptions and compatible locations. For example, **Washing machine** is a **Maintenance** problem at a washing-machine area, while **Washing machine area cleaning** is a **Housekeeping** problem at that same area. Explicitly location-bound problems are validated by the API so a mismatched area is rejected.
+```bash
+docker compose logs -f api      # follow the API log
+docker compose ps               # see running containers
+docker compose down             # stop (data is kept in the mysql_data volume)
+docker compose down -v          # stop AND delete the database volume
+```
 
-If a database already contains the older synthetic issues, regenerate the demo dataset from the API container:
+To rebuild the 200 synthetic demo complaints on an existing database (destructive for the local demo data):
 
 ```bash
 docker compose exec api python -m app.seed --reset-demo-issues
 ```
 
-This command is destructive to the local demo dataset: it recreates synthetic hostels, locations, demo accounts and the 200 sample issues. Do not run it against real or shared data. To initialize a fresh database, use `docker compose down -v` only if you are comfortable permanently deleting the local database volume.
+---
 
-Stop the services with:
+## Configuration
+
+Copy the example file and edit it:
 
 ```bash
-docker compose down
+cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
 ```
 
-To also delete the local database volume, first make sure its data is no longer needed; volume removal permanently deletes the local database contents.
+`.env` is ignored by Git. **Never commit it, and never put keys into frontend code.** After changing it, run `docker compose down` and `docker compose up --build` so the API container picks up the new values.
 
-## Development demo identities
+| Variable | Default | Purpose |
+|---|---|---|
+| `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` | `hostelfix`, `hostelfix`, dev passwords | Database name and logins. Change them for any shared use. |
+| `WEB_PORT`, `API_PORT`, `MYSQL_PORT` | `8080`, `8000`, `3307` | Ports on your machine. |
+| `ENVIRONMENT` | `development` | Set to `production` to switch off the development login header (see below). |
+| `SEED_ON_STARTUP` | `true` | Load the synthetic data when the API starts. |
+| `CORS_ORIGINS` | localhost 8080, 5173, 3000 | Allowed browser origins. The first one is also used in email links. |
+| `SESSION_SECRET` | placeholder | Long random string. **Must be changed** outside local use. |
+| `SESSION_HOURS` | `24` | Session lifetime. |
+| `COOKIE_SECURE` | `false` | Set to `true` when the site is served over HTTPS. |
+| `GOOGLE_CLIENT_ID` | empty | Google OAuth Web Client ID (not a secret). |
+| `GEMINI_API_KEY` | empty | Gemini key. **Secret**, used only by the API container. |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Model name. |
+| `AI_TIMEOUT_SECONDS` | `30` | Time limit for the Gemini call. |
+| `AI_MAX_CHARS` | `500` | Maximum SmartReport text length. |
+| `AI_MAX_IMAGE_BYTES` | `5242880` | Maximum photo size (5 MB). |
+| `MAIL_MODE` | `log` | `log` writes emails to the API log; any other value uses SMTP. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` | empty / `587` | SMTP settings when mail is really sent. |
 
-On the sign-in screen, select one of the pre-seeded demo identities:
+> `AI_DAILY_LIMIT` appears in the example files, but the current code always allows one Gemini draft per student per day and does not read this setting.
 
-| Demo role | User ID | Purpose |
-|---|---:|---|
-| Student | `1` | Dashboard, reporting, community, My Reports, profile |
-| Maintenance staff | `41` | Maintenance work queue and staff actions |
-| Housekeeping staff | `43` | Housekeeping work queue and staff actions |
-| Administrator | `45` | Admin analytics and staff-account creation |
+### Google sign-in
 
-These IDs correspond to the deterministic seed order in the current seed script. If the seed logic changes, confirm the user IDs in the database. Student accounts are Google-only for sign-in. Fixed staff/administrator development credentials are stored in `app/core/role_credentials.py` and are hashed into the database by the seed script.
+1. In Google Cloud Console, create an **OAuth client → Web application**.
+2. Add `http://localhost:8080` as an **Authorized JavaScript origin**.
+3. Put the generated Web Client ID in `.env` as `GOOGLE_CLIENT_ID`.
 
-For the local MS-5 demo, the fixed manual-login accounts are:
-- `admin@iitdh.ac.in` — administrator
-- `maintenance-staff1@iitdh.ac.in` — staff
-- `maintenance-staff2@iitdh.ac.in` — staff
-- `housekeeping-staff1@iitdh.ac.in` — staff
-- `housekeeping-staff2@iitdh.ac.in` — staff
+Do not add a client secret: HostelFix verifies the ID token on the server. The server accepts an account only if Google marks the email as verified, the hosted domain is exactly `iitdh.ac.in`, and the address passes our own exact-domain check. If the browser reports "Invalid Google ID token", check that the client ID matches the one used by the button and that the origin is registered, then rebuild. The reason for a failed check is written to `docker compose logs api` (never the token itself).
 
-Only Argon2id password hashes are stored in `app/core/role_credentials.py`; plaintext passwords are never stored in the repository. The fixed demo passwords from the previous MS5 package remain valid because only their stored representation was changed.
+### Gemini
+
+Create a key in Google AI Studio and put it in `.env` as `GEMINI_API_KEY`. The free tier is enough for development; quotas and model availability can change.
+
+---
+
+## Sign-in and demo accounts
+
+- **Students** use **Continue with Google** with an `@iitdh.ac.in` account. A student account is created on first sign-in.
+- **Staff and administrators** use the separate **Staff / Administrator login** (`/#staff-login`) with email and password.
+
+Seeded staff and administrator accounts:
+
+| Account | Role |
+|---|---|
+| `admin@iitdh.ac.in` | Administrator |
+| `maintenance-staff1@iitdh.ac.in`, `maintenance-staff2@iitdh.ac.in` | Staff (Maintenance) |
+| `housekeeping-staff1@iitdh.ac.in`, `housekeeping-staff2@iitdh.ac.in` | Staff (Housekeeping) |
+
+Only **Argon2id hashes** of their passwords are stored (`app/core/role_credentials.py`); plain passwords are not in the repository. Ask the team for the demo passwords, or sign in as the administrator and create a new staff account with a password of your choosing. Seeded students (`student01@iitdh.ac.in` to `student40@iitdh.ac.in`) are Google-only identities.
+
+**Development shortcut.** While `ENVIRONMENT` is not `production`, the API also accepts an `X-User-Id` header as a login (handy in Swagger UI and tests). In the seed data, user `1` is a student, `41` maintenance staff, `43` housekeeping staff and `45` the administrator. This shortcut must be switched off for any real deployment.
+
+The API also contains a manual student registration route with consent and email verification (`POST /api/v1/auth/register`). It is not shown in the interface, because students are meant to use Google.
+
+---
+
+## SmartReport (AI)
+
+A student types something like *"Hostel 1 floor 4 wing B lift is not working"* (English, Hinglish or a mix) and may attach a photo. SmartReport returns a draft with the hostel, floor, wing, area, category, problem type, title and description, and lists the fields it could not work out. **It never files a complaint**: the student reviews the form and submits it.
+
+How it works:
+
+1. `POST /api/v1/issues/draft` checks the text length (500 characters), image type and size (5 MB), and the student's daily allowance.
+2. Email addresses, phone numbers and roll numbers are replaced by placeholders.
+3. The server calls Gemini (30-second timeout) with the text, the list of valid options and the optional image. The reply must fit a fixed JSON schema, with the supporting words from the text for every field.
+4. Our code checks the reply. A hostel, floor, wing, area or asset is kept only if the student's text really contains it, and regular expressions read obvious values straight from the text. A photo can help with category and problem type, never with the location.
+5. The draft is returned to the form. The normal validation applies again on submission.
+
+**Limits and fallbacks**
+
+- One Gemini-powered draft per student per calendar day, stored in MySQL. After that, the same button switches to a **text-only pattern mode** and photos are refused until tomorrow. `GET /api/v1/issues/smart-report-status` tells the page which mode applies.
+- At most 30 requests per hour per client address.
+- If Gemini is missing, slow, out of quota or returns something unusable, the server falls back to local rules and says so. The normal form always works.
+
+**Privacy.** Gemini receives only the redacted text, the list of options and the optional photo. It never receives names, emails, user IDs or passwords. Photos are not stored by HostelFix. The patterns that remove personal data are narrow, and a photo may still show something private, so students are asked not to include personal information.
+
+**Evaluation.** `tests/ai_evaluation_set.json` holds 40 inputs (clear reports, shorthand such as `H2 F5 D`, Hinglish, typos, vague inputs and prompt-injection attempts). The local fallback gets 22 of 40 right and never invents a location. Results of a live Gemini run are not recorded in the repository yet.
+
+---
+
+## Complaint lifecycle
+
+```
+submitted ─► acknowledged ─► in_progress ─► resolved ─► closed
+    │             │                ▲            │
+    └──► rejected ◄┘                └─ reopened ◄┘
+```
+
+- Staff (or an administrator) move a complaint to acknowledged, in progress and resolved. `rejected` needs a written reason.
+- The reporter confirms a resolved complaint (it becomes `closed`) or asks for a reopen (`reopened`, then staff continue).
+- A resolved complaint with no reply is closed automatically after **7 days**, with the comment `auto-closed: no response`. A background task checks this hourly.
+- `closed` and `rejected` are final. If the problem returns, file a new complaint.
+- The server refuses every transition that is not allowed, and each change is stored with the actor, role and time, and creates a notification.
+- Each category has a target resolution time (default 168 hours), which gives every complaint a due date. A complaint is overdue when the due date has passed and it is not closed or rejected.
+- **Me too** works only on `submitted` complaints, never on Room-area complaints and never on your own.
+
+---
+
+## Architecture
+
+```
+ Browser ──► web (Nginx, :8080) ──/api/──► api (FastAPI, :8000) ──► db (MySQL 8.4, volume mysql_data)
+    │                                          │
+    └─ Google sign-in button                   ├──► Google (verifies ID tokens)
+                                               ├──► Gemini API (SmartReport)
+                                               └──► SMTP server, or the API log
+```
+
+- The browser talks only to Nginx, which serves the static frontend and proxies `/api/` to the API.
+- Only the API container knows the database login, the Gemini key and the session secret.
+- Sessions are stored in MySQL (cookie `hf_session`, stored as a hash). Write requests also need the `X-CSRF-Token` header to match the `hf_csrf` cookie.
+- The schema has 16 tables, created by five Alembic migrations. See the ER diagram PDF for details.
+
+---
+
+## API
+
+The prefix is `/api/v1`. Lists use `page` and `size` (1 to 50) and return `items`, `page`, `size` and `total`. Errors always look like `{"error": {"code": "...", "message": "...", "details": null}}`. Interactive documentation is at `/docs` while the stack is running.
+
+| Area | Main endpoints | Access |
+|---|---|---|
+| Health | `GET /health` | Public |
+| Lookups | `/hostels`, `/hostels/{id}/floors`, `/floors/{id}/wings`, `/wings/{id}/locations`, `/locations/catalog`, `/problem-types/catalog`, `/categories`, `/locations/{id}/assets` | Public |
+| Complaints | `GET /issues`, `GET /issues/{id}`, `GET /issues/{id}/updates` | Public complaints only |
+| Reporting | `POST /issues`, `PATCH`/`DELETE /issues/{id}`, `GET /issues/similar`, `GET /my/issues` | Signed in (edits: reporter only, while `submitted`) |
+| Me too and feedback | `/issues/{id}/confirmations`, `POST /issues/{id}/resolution-feedback` | Signed in |
+| SmartReport | `POST /issues/draft`, `GET /issues/smart-report-status` | Students |
+| Staff | `GET /staff/issues`, `PATCH /staff/issues/{id}/status` | Staff of the category, administrators |
+| Notifications | `GET /notifications`, `PATCH /notifications/{id}` | Owner |
+| Profile | `GET`/`PATCH /me`, `POST /me/password` | Signed in |
+| Authentication | `/auth/google`, `/auth/login`, `/auth/logout`, `/auth/csrf`, `/auth/config`, `/auth/register`, `/auth/verify`, `/auth/forgot-password`, `/auth/reset-password` | Public, rate limited |
+| Administration | `GET /admin/analytics`, `GET`/`POST /admin/staff`, `DELETE /admin/staff/{id}`, and create/update routes for hostels, floors, wings, locations, categories, problem types and assets | Administrators |
+
+> The live API has about 51 paths and 59 operations. `docs/openapi.yaml` is an older hand-written contract (32 paths, 38 operations) and is behind the code. Treat `/openapi.json` from the running API as the current description.
+
+---
 
 ## Tests and quality checks
 
-Run from the project root in an environment with `requirements.txt` installed:
+Run from the project root with `requirements.txt` installed (Python 3.13 recommended):
 
 ```bash
-python -m pytest -q
-python -m pytest --cov=app --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under=65 -q
-node --check frontend/src/app.js
+python -m pytest -m "not e2e" --cov=app --cov-report=term      # unit and integration tests
+ruff check app tests                                          # lint
+node --check frontend/src/app.js                              # frontend syntax check
 ```
 
-The tests use an isolated in-memory SQLite database. The current suite has 20 tests and measured about 66% application coverage in the development environment. It includes issue creation/listing, reporter edit/delete, and the rule that acknowledged complaints cannot be edited or deleted. These tests do not replace a full Docker/MySQL smoke test. GitHub Actions runs Ruff checks and pytest coverage on pushes and pull requests; check the Actions run for the authoritative CI result.
-
-## REST API highlights
-
-The API prefix is `/api/v1`. Interactive request/response documentation is available at `/docs` while the app is running. The maintained contract is `docs/openapi.yaml`.
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/health` | Health check |
-| `GET` | `/hostels`, `/hostels/{id}/floors`, `/floors/{id}/wings`, `/wings/{id}/locations` | Dynamic location hierarchy |
-| `GET` | `/locations/catalog`, `/problem-types/catalog` | UI-friendly location/problem catalogs |
-| `GET` | `/categories`, `/categories/{id}/problem-types`, `/locations/{id}/assets` | Category, problem and asset lookup |
-| `GET` | `/issues` | Public issue listing and filtering |
-| `POST` | `/issues` | Submit a report |
-| `GET` | `/issues/{id}` and `/issues/{id}/updates` | Issue details and timeline |
-| `GET` | `/my/issues`, `/me` | Current demo user's reports/profile |
-| `PATCH` | `/issues/{id}` | Edit a report only while its status is `submitted` |
-| `DELETE` | `/issues/{id}` | Delete a report only while its status is `submitted` |
-| `GET`, `POST`, `DELETE` | `/issues/{id}/confirmations` | Read count/add/remove “Me too” confirmation |
-| `POST` | `/issues/{id}/resolution-feedback` | Confirm resolution or request reopening |
-| `GET` | `/staff/issues` | Authorised staff queue |
-| `PATCH` | `/staff/issues/{id}/status` | Status/progress update |
-| `GET`, `PATCH` | `/notifications`, `/notifications/{id}` | Notifications and read state |
-| `GET` | `/admin/analytics` | Administrator metrics |
-| `POST` | `/admin/staff` | Create a staff account in the development flow |
-| `GET`, `DELETE` | `/me` | Read/deactivate the current demo profile |
-
-## Project data model
-
-The synthetic seed represents two hostels, eight floors per hostel, five wings (A–E) per floor, eight area types per wing, two maintenance/housekeeping categories, configurable problem types and assets, demo users, complaints, status updates, confirmations, feedback and notifications. Exact seed values are defined in `app/seed.py`.
-
-## Security note
-
-For deployment, set a strong `SESSION_SECRET`, use HTTPS with `COOKIE_SECURE=true`, configure the Google Web Client ID, configure SMTP if real email delivery is required, and keep the Gemini API key only in environment variables/GitHub Secrets.
-
-## MS-5 Authentication and SmartReport
-
-### Authentication
-- Students use Google Sign-In only. Google accounts must use the exact `@iitdh.ac.in` domain. Staff/administrator accounts use the separate manual email/password login. Student registration/password login is not exposed in the UI.
-- Sessions use an HttpOnly, SameSite cookie plus a CSRF token for state-changing API requests.
-- Account deletion anonymises the account while retaining complaint history.
-
-### Demo credentials
-Student accounts are Google-only for sign-in. Fixed staff/administrator development credentials are stored in `app/core/role_credentials.py` and are hashed into the database by the seed script.
-
-For the local MS-5 demo, the fixed manual-login accounts are:
-- `admin@iitdh.ac.in` — administrator
-- `maintenance-staff1@iitdh.ac.in` — staff
-- `maintenance-staff2@iitdh.ac.in` — staff
-- `housekeeping-staff1@iitdh.ac.in` — staff
-- `housekeeping-staff2@iitdh.ac.in` — staff
-
-Only Argon2id password hashes are stored in `app/core/role_credentials.py`; plaintext passwords are never stored in the repository. The fixed demo passwords from the previous MS5 package remain valid because only their stored representation was changed.
-- `student01@iitdh.ac.in` through `student40@iitdh.ac.in` are Google-only demo student identities.
-
-### Google setup
-Create a Google OAuth Web Client ID for `http://localhost:8080` and put it in `GOOGLE_CLIENT_ID` in `.env`. The frontend uses Google Identity Services and the backend verifies the returned ID token.
-
-### Gemini setup
-Put your free Gemini API key in `GEMINI_API_KEY`. The default model is `gemini-3.5-flash-lite`; override `GEMINI_MODEL` if needed. SmartReport supports text plus an optional image. Each student gets one Gemini AI use per calendar day. After the daily AI use is consumed, text-only pattern-based form assistance remains available and photo assistance is disabled until the next day. Images are sent only to Gemini for classification and are not stored by HostelFix. The AI call is server-side and never exposed to browser code.
-
-`docker compose up --build` starts the complete stack.
-
-## MS-5 authentication and AI setup
-
-### 1. Create the local environment file
-
-Copy the example file:
+- **28 unit and integration tests** run against an in-memory SQLite database in a few seconds and need no Docker. Google verification and mail sending are replaced by stubs, and no test calls Gemini. Measured coverage of `app/` is about **75%** (the CI gate is 70%).
+- **3 Playwright browser tests** need the site to be running:
 
 ```bash
-cp .env.example .env
-```
-
-On Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-You must edit **`.env`**. Never put these values into `frontend/src/app.js` or commit `.env`.
-
-Required values for your MS-5 demo:
-
-```env
-SESSION_SECRET=put_a_random_secret_here_at_least_32_characters_long
-GOOGLE_CLIENT_ID=YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com
-GEMINI_API_KEY=YOUR_FREE_GEMINI_API_KEY
-GEMINI_MODEL=gemini-3.5-flash-lite
-```
-
-`SESSION_SECRET` is generated by you; it is not supplied by Google or Gemini. The Google client ID is a browser OAuth identifier and is safe to be present in the frontend flow, but the backend still verifies the returned ID token. The Gemini API key is secret and is used only by FastAPI.
-
-### 2. Create the Google OAuth Web Client
-
-Open Google Cloud Console and create/select a project. In the Google Auth Platform / Clients area, create an **OAuth client → Web application**.
-
-For local HostelFix, add this **Authorized JavaScript origin**:
-
-```text
-http://localhost:8080
-```
-
-Google's current Identity Services documentation requires the JavaScript origin to match the site origin; localhost HTTP is allowed for development. urlGoogle Identity Services setuphttps://developers.google.com/identity/gsi/web/reference/js-reference
-
-Copy the generated Web Client ID and put it into `.env` as `GOOGLE_CLIENT_ID`.
-
-Do **not** put a Google client secret into this project. This implementation uses Google Identity Services in the browser and verifies the ID token on the FastAPI server.
-
-The backend additionally rejects Google accounts unless the ID token is verified and the account belongs to the `iitdh.ac.in` hosted domain. Therefore a Gmail account such as `someone@gmail.com` will not be accepted.
-
-### 3. Create the Gemini API key
-
-Use Google AI Studio to create a Gemini API key and copy it into:
-
-```env
-GEMINI_API_KEY=...
-```
-
-The Gemini Developer API has a free tier, although model availability and free quotas can change. urlGemini API pricing and free tierhttps://ai.google.dev/gemini-api/docs/pricing
-
-This project uses `gemini-3.5-flash-lite`, which is a stable multimodal model supporting image input and structured output. urlGemini 3.5 Flash-Lite model documentationhttps://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite
-
-### 4. Start the project
-
-From the directory containing `docker-compose.yml`:
-
-```bash
-docker compose down
-docker compose up --build
-```
-
-Wait until the `web` and `api` services are running. Then open:
-
-```text
-http://localhost:8080
-```
-
-The first build can take several minutes because Docker downloads the Python dependencies and MySQL image.
-
-### 5. Test manual IIT Dharwad registration
-
-On **Create account** use an address ending exactly in:
-
-```text
-@iitdh.ac.in
-```
-
-The password requirement is **at least 5 characters**.
-
-For example:
-
-```text
-Name: Test User
-Email: testuser@iitdh.ac.in
-Password: Test1
-```
-
-Keep the consent checkbox selected.
-
-In the default development configuration:
-
-```env
-MAIL_MODE=log
-```
-
-no real email is sent. The verification URL is returned by the development API response and logged by the API container. Open that verification URL in the browser, then sign in normally.
-
-### 6. Test Google Sign-In
-
-Use a Google account whose Google Workspace account is an IIT Dharwad `@iitdh.ac.in` account and whose email is verified by Google.
-
-Click **Continue with Google**. If the browser reports `Invalid Google ID token`, first check that the `GOOGLE_CLIENT_ID` in `.env` is the **same Web Client ID** used by the Google button and that `http://localhost:8080` is registered as an authorized JavaScript origin. Then rebuild:
-
-```bash
-docker compose down
-docker compose up --build
-```
-
-### 7. Test SmartReport
-
-Sign in as a student and open **Report an Issue**.
-
-SmartReport accepts either text, an image, or both. Example image tests:
-
-- Upload a photo of a damaged washing machine → SmartReport should suggest **Maintenance → Washing machine**.
-- Upload a photo showing a faulty/stuck lift → SmartReport should suggest **Maintenance → Lift malfunction**.
-- Upload a dirty washing-machine area → SmartReport should suggest **Housekeeping → Washing machine area cleaning**.
-
-The AI result is only a draft. The student must review the suggested fields before submitting the complaint.
-
-The API sends only the complaint text and optional uploaded image needed for SmartReport. Passwords, email addresses and other account identifiers are not sent to Gemini.
-
-### 8. Run tests
-
-Unit/integration tests:
-
-```bash
-python -m pytest -m 'not e2e' -q
-```
-
-Frontend syntax check:
-
-```bash
-node --check frontend/src/app.js
-```
-
-For the Playwright tests, install the browser once:
-
-```bash
-python -m playwright install chromium
-```
-
-Then, with HostelFix already running:
-
-```bash
+python -m playwright install chromium     # once
+docker compose up -d --build
 python -m pytest tests/e2e -m e2e -q
 ```
 
-The GitHub Actions workflow installs Chromium automatically and runs the two MS-5 Playwright tests.
+**GitHub Actions** (`.github/workflows/ci.yml`) runs on every push and pull request. Job one installs the pinned requirements, runs Ruff and the tests with the coverage gate, and uploads `coverage.xml`. Job two starts the whole stack with Docker Compose and runs the Playwright tests.
 
-### 9. Useful Docker commands
+---
 
-```bash
-# Start
-Docker compose up --build
+## Project layout
 
-# Stop
-Docker compose down
-
-# View API logs
-Docker compose logs -f api
-
-# View all logs
-Docker compose logs -f
-
-# Check running containers
-Docker compose ps
+```
+.
+├── app/
+│   ├── main.py            # app set-up, middleware, error handlers, hourly auto-close task
+│   ├── core/              # settings, error format, rate limiter, problem-to-area rules
+│   ├── db/session.py      # engine and session
+│   ├── models/            # the 16 SQLAlchemy tables
+│   ├── schemas/           # request and response models
+│   ├── routers/           # auth, issues, ai, admin, locations, notifications, profile, health, demo
+│   ├── services/          # security, google_auth, mailer, lifecycle, ai (Gemini)
+│   └── seed.py            # deterministic synthetic data
+├── alembic/versions/      # five database migrations
+├── config/hostel_layout.yaml
+├── frontend/              # Dockerfile, nginx.conf, src/ (index.html, app.js, styles.css)
+├── tests/                 # unit, integration, e2e, AI evaluation set
+├── docs/openapi.yaml
+├── docker-compose.yml, Dockerfile, .env.example
+└── MS-1 / MS-2 PDF documents
 ```
 
-Use lowercase `docker` rather than `Docker` on Linux/macOS/WSL:
+---
 
-```bash
-docker compose ps
-docker compose logs -f api
-```
+## Security and privacy
 
-If you changed `.env`, rebuild/recreate the API container so the new environment values are loaded:
+- **Passwords** are hashed with Argon2id and never returned or logged. Tokens (sessions, email links) are stored only as SHA-256 hashes.
+- **Sessions** use an `HttpOnly`, `SameSite=Lax` cookie plus CSRF protection. Logout, password reset and account removal take effect immediately because sessions live on the server.
+- **Access control** is enforced on the server: role checks on staff and admin routes, ownership checks on edits, and staff limited to their own category. Public responses never include the reporter or the room label.
+- **Input**: SQLAlchemy only (no string-built SQL), Pydantic validation on every request, escaped output in the page, and image uploads limited by type and size.
+- **Rate limits** apply to login, registration, verification, password reset and SmartReport.
+- **Data kept**: name, college email, Google ID and the complaints a user files. All seeded data is synthetic; do not add real student data to the repository.
+- **Secrets** belong in `.env` or GitHub Secrets only. `.env` is git-ignored.
 
-```bash
-docker compose down
-docker compose up --build
-```
+Before any real deployment: set `ENVIRONMENT=production`, use a long random `SESSION_SECRET`, serve over HTTPS with `COOKIE_SECURE=true`, restrict `CORS_ORIGINS`, change the database passwords, configure SMTP, and disable the `/demo-users` endpoint.
 
+---
 
-## MS-5 lifecycle and administration
+## Known limitations
 
-- Similar open complaints are checked before a new report is submitted. Matching uses the exact location and problem type, with housekeeping service date included when applicable. Room-area complaints are excluded from “Me too” matching. The student can choose **Me too** on an existing submitted complaint or continue with a new report.
-- “Me too” is enforced by the backend only for `submitted` non-Room complaints and cannot be bypassed through the UI.
-- Complaint status transitions are enforced server-side using the design-document state machine. `closed` and `rejected` are final.
-- Reporter confirmation changes `resolved -> closed`; a reopen request changes `resolved -> reopened`. Resolved complaints with no response are automatically closed after 7 days with the audit comment `auto-closed: no response`.
-- Asset selection is validated against the `asset_locations` relationship, so an asset cannot be attached to an unrelated location.
-- Administrators can manage categories, problem types, locations, assets and asset-location links, and set category resolution targets from the Admin Dashboard.
-- Admin analytics include status/category/location/problem-type counts, overdue complaints, reopened complaints and average resolution time.
-- Administrators create staff accounts and choose the initial password. Passwords are hashed with Argon2id before storage; staff-account deletion is administrator-controlled and preserves audit history.
-- Authentication, verification, password-reset and SmartReport operations are rate-limited.
-- The SmartReport evaluation set contains 40 manually reviewable cases covering clear reports, incomplete/ambiguous reports, Hinglish, typos, short inputs, partial-location traps and prompt-injection attempts.
+This list is kept honest on purpose. See the architecture report for the full discussion.
+
+- Students cannot delete their own account in this version (`DELETE /me` returns 403). Administrators can delete staff accounts.
+- The Google sign-in screen shows no consent notice yet.
+- The minimum password length is 5 characters.
+- `X-User-Id` works as a login unless `ENVIRONMENT=production`, and reading a private complaint honours only that header, not the session cookie.
+- Rate limits are kept in memory and keyed by client address; behind Nginx all users probably share one limit.
+- Creating a complaint and adding a Me too are restricted in the interface but not in the API.
+- The server does not require a resolution note when a complaint is marked resolved.
+- `docs/openapi.yaml` is behind the live API.
+- The Playwright tests only check that the login pages render; there is no full sign-in, report and list flow yet.
+- The CI test job declares a MySQL service but the tests use SQLite.
+- Live Gemini evaluation results and `AI_USAGE.md` are not in the repository yet.
+
+---
+
+## Troubleshooting
+
+| Problem | What to try |
+|---|---|
+| "Invalid Google ID token" | Check `GOOGLE_CLIENT_ID` matches the button, that `http://localhost:8080` is an authorized origin, then rebuild. Read the reason in `docker compose logs api`. |
+| SmartReport says it used local text extraction | `GEMINI_API_KEY` is empty or invalid, or Gemini timed out or is out of quota. |
+| SmartReport says the daily limit is reached | Each student gets one Gemini draft a day; text-only help stays available and photos return tomorrow. |
+| Changes to `.env` are ignored | Run `docker compose down` then `docker compose up --build`. |
+| Port already in use | Change `WEB_PORT`, `API_PORT` or `MYSQL_PORT` in `.env`. |
+| Verification or reset link not received | With `MAIL_MODE=log` the link is in `docker compose logs api` (and, for registration, in the API response). |
+| Start from an empty database | `docker compose down -v`, then `docker compose up --build`. This permanently deletes local data. |
+
+---
+
+## Documents
+
+- `MS-1_HostelFix_Design_Document.pdf` — problem, dataset, pages, user stories, AI plan.
+- `MS-2_HostelFix_ER_Diagram.pdf` — ER diagram, normal form notes and index notes.
+- `MS-2_Figma_Demo.pdf` — link to the Figma prototype and its demo video.
+- `docs/openapi.yaml` — OpenAPI contract (older than the code, see above).
+- The architecture report describes the whole system in detail.
