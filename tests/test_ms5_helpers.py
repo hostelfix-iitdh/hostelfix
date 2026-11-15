@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from app.services.ai import SmartReportResult
 from app.routers.ai import _postprocess
+from app.db.session import get_db
 
 
 def test_evaluation_set_has_at_least_20_cases():
@@ -48,3 +49,37 @@ def test_fixed_role_credentials_are_argon2_hashes():
     from app.core.role_credentials import ADMIN_CREDENTIALS, STAFF_CREDENTIALS
     assert ADMIN_CREDENTIALS["password_hash"].startswith("$argon2")
     assert all(item["password_hash"].startswith("$argon2") for item in STAFF_CREDENTIALS)
+
+
+def test_admin_can_create_and_delete_staff_with_hashed_password(client):
+    from app.models import Category, User
+    from app.services.security import verify_password
+    db = next(client.app.dependency_overrides[get_db]())
+    category = Category(name="Maintenance New", resolution_target_hours=168)
+    admin = User(name="Admin", email="admin-new@iitdh.ac.in", role="administrator", is_verified=True)
+    db.add_all([category, admin]); db.commit(); db.refresh(category); db.refresh(admin)
+    h = {"X-User-Id": str(admin.id)}
+    created = client.post("/api/v1/admin/staff", headers=h, json={"name":"Tech", "email":"tech@iitdh.ac.in", "category_id":category.id, "password":"secret1"})
+    assert created.status_code == 201
+    staff = db.query(User).filter(User.email == "tech@iitdh.ac.in").one()
+    assert staff.password_hash and staff.password_hash != "secret1"
+    assert verify_password("secret1", staff.password_hash)
+    assert client.delete(f"/api/v1/admin/staff/{staff.id}", headers=h).status_code == 204
+    db.refresh(staff)
+    assert staff.deleted_at is not None and staff.password_hash is None
+    db.close()
+
+
+def test_smart_report_falls_back_to_pattern_mode_after_daily_limit(client):
+    from datetime import date
+    from app.models import User
+    db = next(client.app.dependency_overrides[get_db]())
+    student = User(name="Student", email="student@iitdh.ac.in", role="student", is_verified=True, smart_report_last_used_on=date.today())
+    db.add(student); db.commit(); db.refresh(student)
+    response = client.post("/api/v1/issues/draft", headers={"X-User-Id": str(student.id)}, data={"text":"Hostel 1 fourth floor wing B corridor is dirty"})
+    assert response.status_code == 200
+    assert response.json()["mode"] == "pattern"
+    assert response.json()["daily_limit_reached"] is True
+    image = client.post("/api/v1/issues/draft", headers={"X-User-Id": str(student.id)}, data={"text":"Hostel 1 corridor"}, files={"image":("x.png", b"not-an-image", "image/png")})
+    assert image.status_code == 403
+    db.close()

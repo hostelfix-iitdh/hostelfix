@@ -33,13 +33,6 @@ def change_password(payload: ChangePassword, actor: User = Depends(get_actor), d
     actor.password_hash = hash_password(payload.new_password); db.commit()
     return {"message": "Password changed successfully"}
 
-@router.delete("/me", status_code=204)
-def delete_profile(actor: User = Depends(get_actor), db: Session = Depends(get_db)):
-    # Keep complaint rows for audit/history, but remove account identifiers.
-    actor.name = "Deleted user"
-    actor.email = f"deleted-{actor.id}@deleted.hostelfix.invalid"
-    actor.password_hash = None
-    actor.google_sub = None
-    actor.deleted_at = __import__("datetime").datetime.utcnow()
-    db.commit()
-    return None
+@router.delete("/me")
+def delete_profile(actor: User = Depends(get_actor)):
+    raise HTTPException(403, "Account deletion is managed by an administrator.")

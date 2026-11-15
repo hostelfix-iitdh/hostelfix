@@ -10,7 +10,7 @@ HostelFix is a web application for reporting, tracking and managing hostel maint
 
 ## Included screens and workflows
 
-- **Sign in:** IIT Dharwad email/password authentication, student registration with email verification, password reset, profile management, account deletion/anonymisation, and Google Identity Services sign-in restricted to verified iitdh.ac.in accounts.
+- **Sign in:** IIT Dharwad email/password authentication, student registration with email verification, password reset, profile management, and Google Identity Services sign-in restricted to verified iitdh.ac.in accounts. Account deletion is administrator-managed; there is no self-service delete option.
 - **Dashboard:** personal report metrics, recent reports and quick actions.
 - **Report an Issue:** dependent hostel → floor → wing → area selection; category/problem-type selection; room label and relevant service date; public/private visibility; editable SmartReport draft area; review-before-submit confirmation.
 - **Community Issues:** public-safe issue list, search, status/hostel/floor/wing/area/category/problem filters, sorting, pagination, issue details and “Me too” confirmations for other residents’ reports only (reporters cannot confirm their own issue).
@@ -18,7 +18,7 @@ HostelFix is a web application for reporting, tracking and managing hostel maint
 - **My Reports:** current user's reports, status filtering and pagination. The reporter can edit or delete a complaint only while it is `submitted`; once staff acknowledge it, both actions are locked.
 - **Profile:** account information, sign out and account deactivation confirmation.
 - **Staff Dashboard:** role/category-limited work queue and status updates.
-- **Admin Dashboard:** issue metrics, status/category charts and staff-account creation.
+- **Admin Dashboard:** issue metrics, status/category charts, staff-account creation with an administrator-selected password, and staff-account deletion.
 - **Notifications:** list and mark notifications as read.
 
 The layout is responsive and uses the Figma palette, typography, header/navigation, card shapes, field sizes, status chips and accessible focus styles. The backend remains the source of truth for validation and permissions.
@@ -175,7 +175,7 @@ Only Argon2id password hashes are stored in `app/core/role_credentials.py`; plai
 Create a Google OAuth Web Client ID for `http://localhost:8080` and put it in `GOOGLE_CLIENT_ID` in `.env`. The frontend uses Google Identity Services and the backend verifies the returned ID token.
 
 ### Gemini setup
-Put your free Gemini API key in `GEMINI_API_KEY`. The default model is `gemini-3.5-flash-lite`; override `GEMINI_MODEL` if needed. SmartReport supports text plus an optional image. Images are sent only to Gemini for classification and are not stored by HostelFix. The AI call is server-side and never exposed to browser code.
+Put your free Gemini API key in `GEMINI_API_KEY`. The default model is `gemini-3.5-flash-lite`; override `GEMINI_MODEL` if needed. SmartReport supports text plus an optional image. Each student gets one Gemini AI use per calendar day. After the daily AI use is consumed, text-only pattern-based form assistance remains available and photo assistance is disabled until the next day. Images are sent only to Gemini for classification and are not stored by HostelFix. The AI call is server-side and never exposed to browser code.
 
 `docker compose up --build` starts the complete stack.
 
@@ -379,6 +379,6 @@ docker compose up --build
 - Asset selection is validated against the `asset_locations` relationship, so an asset cannot be attached to an unrelated location.
 - Administrators can manage categories, problem types, locations, assets and asset-location links, and set category resolution targets from the Admin Dashboard.
 - Admin analytics include status/category/location/problem-type counts, overdue complaints, reopened complaints and average resolution time.
-- Staff accounts created by an administrator receive a one-time set-password link. Passwords are hashed with Argon2id before storage.
+- Administrators create staff accounts and choose the initial password. Passwords are hashed with Argon2id before storage; staff-account deletion is administrator-controlled and preserves audit history.
 - Authentication, verification, password-reset and SmartReport operations are rate-limited.
 - The SmartReport evaluation set contains 40 manually reviewable cases covering clear reports, incomplete/ambiguous reports, Hinglish, typos, short inputs, partial-location traps and prompt-injection attempts.

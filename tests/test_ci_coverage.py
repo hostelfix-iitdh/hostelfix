@@ -235,8 +235,8 @@ def test_profile_password_notifications_and_delete(client):
     close_db(generator)
     assert client.patch(f"/api/v1/notifications/{note_id}", headers={"X-User-Id": str(other_id)}, json={"is_read": False}).status_code == 403
 
-    assert client.delete("/api/v1/me", headers=h).status_code == 204
-    assert client.get("/api/v1/me", headers=h).status_code == 401
+    assert client.delete("/api/v1/me", headers=h).status_code == 403
+    assert client.get("/api/v1/me", headers=h).status_code == 200
 
 
 def test_auth_config_google_login_and_password_flows(client, monkeypatch):

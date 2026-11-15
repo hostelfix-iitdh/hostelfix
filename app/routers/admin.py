@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models import Issue, Category, ProblemType, User, Hostel, Floor, Wing, Location, Asset, AssetLocation, EmailToken
 from app.routers.deps import require_role
-from app.services.security import random_token, token_hash, expiry
+from app.services.security import random_token, token_hash, expiry, hash_password
 from app.services.mailer import send_mail
 from app.core.config import settings
 
@@ -16,6 +16,7 @@ class StaffCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     category_id: int = Field(gt=0)
+    password: str | None = Field(default=None, min_length=5, max_length=128)
 
 class CategoryCreate(BaseModel):
     name: str = Field(min_length=2, max_length=80)
@@ -75,20 +76,55 @@ class LocationPatch(BaseModel):
 @router.post("/admin/staff", status_code=201)
 def create_staff(payload: StaffCreate, actor: User = Depends(require_role("administrator")), db: Session = Depends(get_db)):
     email = str(payload.email).strip().lower()
-    if db.query(User).filter(func.lower(User.email) == email).first():
+    if db.query(User).filter(func.lower(User.email) == email, User.deleted_at.is_(None)).first():
         raise HTTPException(409, "An account with this email already exists")
     category = db.get(Category, payload.category_id)
     if not category:
         raise HTTPException(422, "Unknown category_id")
-    user = User(name=payload.name.strip(), email=email, role="staff", category_id=category.id, is_verified=False)
+
+    # The administrator chooses the initial password. Only its Argon2id hash is persisted.
+    user = User(
+        name=payload.name.strip(), email=email, role="staff", category_id=category.id,
+        password_hash=hash_password(payload.password) if payload.password else None,
+        is_verified=bool(payload.password),
+    )
     db.add(user); db.flush()
-    raw = random_token()
-    db.add(EmailToken(user_id=user.id, token_hash=token_hash(raw), purpose="set_password", expires_at=expiry(24*60)))
+
+    # Backward-compatible development path for old API callers that omit a password.
+    link = None
+    if not payload.password:
+        raw = random_token()
+        db.add(EmailToken(user_id=user.id, token_hash=token_hash(raw), purpose="set_password", expires_at=expiry(24*60)))
+        link = f"{settings.cors_origin_list[0]}/?set-password={raw}"
+        send_mail(email, "Set your HostelFix staff password", f"Open this link to set your password:\n{link}\n\nThis link expires in 24 hours.")
+
     db.commit(); db.refresh(user)
-    link = f"{settings.cors_origin_list[0]}/?set-password={raw}"
-    send_mail(email, "Set your HostelFix staff password", f"Open this link to set your password:\n{link}\n\nThis link expires in 24 hours.")
-    return {"id": user.id, "name": user.name, "email": user.email, "role": user.role, "category_id": user.category_id,
-            "development_set_password_url": link if settings.mail_mode == "log" else None}
+    return {"id": user.id, "name": user.name, "email": user.email, "role": user.role,
+            "category_id": user.category_id, "development_set_password_url": link if settings.mail_mode == "log" else None}
+
+
+@router.get("/admin/staff")
+def list_staff(actor: User = Depends(require_role("administrator")), db: Session = Depends(get_db)):
+    rows = db.query(User).filter(User.role == "staff", User.deleted_at.is_(None)).order_by(User.name.asc()).all()
+    return {"items": [{"id": row.id, "name": row.name, "email": row.email, "role": row.role,
+                       "category_id": row.category_id, "category": row.category.name if row.category else None,
+                       "is_verified": row.is_verified, "created_at": row.created_at} for row in rows]}
+
+
+@router.delete("/admin/staff/{staff_id}", status_code=204)
+def delete_staff(staff_id: int, actor: User = Depends(require_role("administrator")), db: Session = Depends(get_db)):
+    staff = db.get(User, staff_id)
+    if not staff or staff.deleted_at:
+        raise HTTPException(404, "Staff account not found")
+    if staff.role != "staff":
+        raise HTTPException(400, "Only staff accounts can be deleted here")
+    staff.name = "Deleted staff"
+    staff.email = f"deleted-staff-{staff.id}@deleted.hostelfix.invalid"
+    staff.password_hash = None
+    staff.google_sub = None
+    staff.deleted_at = datetime.utcnow()
+    db.query(EmailToken).filter(EmailToken.user_id == staff.id).delete(synchronize_session=False)
+    db.commit()
 
 @router.get("/admin/analytics")
 def analytics(actor: User = Depends(require_role("administrator")), db: Session = Depends(get_db)):

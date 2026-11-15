@@ -188,15 +188,21 @@ async def smart_draft(request: Request, text: str = Form(default=""), image: Upl
         data = await image.read()
         if len(data) > settings.ai_max_image_bytes:
             raise HTTPException(413, "Image is too large; maximum is 5 MB")
-    # SmartReport is intentionally limited to one use per student per calendar day.
-    # The usage marker is stored in MySQL, so the limit survives API/container restarts.
+    # SmartReport AI is limited to one use per student per calendar day. After
+    # the first AI use, the same endpoint becomes a deterministic text-only
+    # pattern assistant. Images are deliberately rejected during that period.
     today = date.today()
     locked_actor = db.query(User).filter(User.id == actor.id).with_for_update().one()
+    options = _options(db)
     if locked_actor.smart_report_last_used_on == today:
-        raise HTTPException(429, "Daily SmartReport limit reached. You can use SmartReport again tomorrow.")
+        if image:
+            raise HTTPException(403, "Daily SmartReport AI limit reached. Photo assistance is disabled until tomorrow.")
+        result = _postprocess(_local_fallback(text.strip(), options), options, text)
+        return {"draft": result,
+                "message": "Daily SmartReport AI limit reached. Pattern-based form assistance is active until tomorrow; photo assistance is disabled.",
+                "mode": "pattern", "daily_limit_reached": True}
     locked_actor.smart_report_last_used_on = today
     db.commit()
-    options = _options(db)
     try:
         result = await asyncio.wait_for(provider.draft(text.strip(), options, data, image.content_type if image else None), timeout=settings.ai_timeout_seconds)
         message = "SmartReport draft ready. Review the location and all suggested fields before submitting."
@@ -209,4 +215,12 @@ async def smart_draft(request: Request, text: str = Form(default=""), image: Upl
         if image:
             result.image_observation = "The image could not be classified by Gemini right now. Please review the image-based asset/problem fields manually."
         message = "SmartReport used local text extraction because Gemini is temporarily unavailable. Review every field before submitting."
-    return {"draft": _postprocess(result, options, text), "message": message}
+    return {"draft": _postprocess(result, options, text), "message": message, "mode": "ai", "daily_limit_reached": False}
+
+
+@router.get("/smart-report-status")
+def smart_report_status(actor: User = Depends(get_actor)):
+    used = actor.smart_report_last_used_on == date.today()
+    return {"used_today": used, "ai_available": not used, "photo_available": not used,
+            "message": "AI SmartReport is available once today." if not used else
+                       "AI SmartReport limit reached; pattern-based form assistance is available until tomorrow."}
