@@ -1,0 +1,2688 @@
+openapi: 3.1.0
+info:
+  title: HostelFix API
+  description: HostelFix hostel issue reporting API.
+  version: 1.0.0
+paths:
+  /api/v1/auth/config:
+    get:
+      tags:
+      - Authentication
+      summary: Auth Config
+      operationId: auth_config_api_v1_auth_config_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/auth/register:
+    post:
+      tags:
+      - Authentication
+      summary: Register
+      operationId: register_api_v1_auth_register_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterIn'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/verify:
+    post:
+      tags:
+      - Authentication
+      summary: Verify Email
+      operationId: verify_email_api_v1_auth_verify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenIn'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Authentication
+      summary: Login
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginIn'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/google:
+    post:
+      tags:
+      - Authentication
+      summary: Google Login
+      operationId: google_login_api_v1_auth_google_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleIn'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Authentication
+      summary: Logout
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '204':
+          description: Successful Response
+  /api/v1/auth/forgot-password:
+    post:
+      tags:
+      - Authentication
+      summary: Forgot Password
+      operationId: forgot_password_api_v1_auth_forgot_password_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetIn'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/reset-password:
+    post:
+      tags:
+      - Authentication
+      summary: Reset Password
+      operationId: reset_password_api_v1_auth_reset_password_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordSetIn'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/csrf:
+    get:
+      tags:
+      - Authentication
+      summary: Csrf
+      operationId: csrf_api_v1_auth_csrf_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/issues/draft:
+    post:
+      tags:
+      - SmartReport AI
+      summary: Smart Draft
+      operationId: smart_draft_api_v1_issues_draft_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_smart_draft_api_v1_issues_draft_post'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/issues/smart-report-status:
+    get:
+      tags:
+      - SmartReport AI
+      summary: Smart Report Status
+      operationId: smart_report_status_api_v1_issues_smart_report_status_get
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/health:
+    get:
+      tags:
+      - Health
+      summary: Health
+      operationId: health_api_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/locations/catalog:
+    get:
+      tags:
+      - Locations and Categories
+      summary: Location Catalog
+      operationId: location_catalog_api_v1_locations_catalog_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/problem-types/catalog:
+    get:
+      tags:
+      - Locations and Categories
+      summary: Problem Type Catalog
+      operationId: problem_type_catalog_api_v1_problem_types_catalog_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/hostels:
+    get:
+      tags:
+      - Locations and Categories
+      summary: Hostels
+      operationId: hostels_api_v1_hostels_get
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/hostels/{hostel_id}/floors:
+    get:
+      tags:
+      - Locations and Categories
+      summary: Floors
+      operationId: floors_api_v1_hostels__hostel_id__floors_get
+      parameters:
+      - name: hostel_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Hostel Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/floors/{floor_id}/wings:
+    get:
+      tags:
+      - Locations and Categories
+      summary: Wings
+      operationId: wings_api_v1_floors__floor_id__wings_get
+      parameters:
+      - name: floor_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Floor Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/wings/{wing_id}/locations:
+    get:
+      tags:
+      - Locations and Categories
+      summary: Locations
+      operationId: locations_api_v1_wings__wing_id__locations_get
+      parameters:
+      - name: wing_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Wing Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/categories:
+    get:
+      tags:
+      - Locations and Categories
+      summary: Categories
+      operationId: categories_api_v1_categories_get
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/categories/{category_id}/problem-types:
+    get:
+      tags:
+      - Locations and Categories
+      summary: Problem Types
+      operationId: problem_types_api_v1_categories__category_id__problem_types_get
+      parameters:
+      - name: category_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Category Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/locations/{location_id}/assets:
+    get:
+      tags:
+      - Locations and Categories
+      summary: Assets
+      operationId: assets_api_v1_locations__location_id__assets_get
+      parameters:
+      - name: location_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Location Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/issues:
+    get:
+      tags:
+      - Issues
+      summary: List Issues
+      operationId: list_issues_api_v1_issues_get
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - name: location_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Location Id
+      - name: problem_type_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Problem Type Id
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          title: Q
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Issues
+      summary: Create Issue
+      operationId: create_issue_api_v1_issues_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/my/issues:
+    get:
+      tags:
+      - Issues
+      summary: My Issues
+      operationId: my_issues_api_v1_my_issues_get
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/issues/{issue_id}/confirmations:
+    get:
+      tags:
+      - Issues
+      summary: Confirmation Summary
+      operationId: confirmation_summary_api_v1_issues__issue_id__confirmations_get
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Issue Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Issues
+      summary: Confirm Issue
+      operationId: confirm_issue_api_v1_issues__issue_id__confirmations_post
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Issue Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Issues
+      summary: Unconfirm Issue
+      operationId: unconfirm_issue_api_v1_issues__issue_id__confirmations_delete
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Issue Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/issues/similar:
+    get:
+      tags:
+      - Issues
+      summary: Similar Issues
+      description: Return open, non-room complaints matching the exact location and
+        problem type.
+      operationId: similar_issues_api_v1_issues_similar_get
+      parameters:
+      - name: location_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          title: Location Id
+      - name: problem_type_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          title: Problem Type Id
+      - name: service_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Service Date
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/issues/{issue_id}:
+    get:
+      tags:
+      - Issues
+      summary: Get Issue
+      operationId: get_issue_api_v1_issues__issue_id__get
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Issue Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Issues
+      summary: Patch Issue
+      operationId: patch_issue_api_v1_issues__issue_id__patch
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Issue Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssuePatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Issues
+      summary: Delete Issue
+      description: Allow a reporter to withdraw a complaint only before staff acknowledge
+        it.
+      operationId: delete_issue_api_v1_issues__issue_id__delete
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Issue Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/issues/{issue_id}/updates:
+    get:
+      tags:
+      - Issues
+      summary: Issue Updates
+      operationId: issue_updates_api_v1_issues__issue_id__updates_get
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Issue Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/issues/{issue_id}/resolution-feedback:
+    post:
+      tags:
+      - Issues
+      summary: Resolution Feedback
+      operationId: resolution_feedback_api_v1_issues__issue_id__resolution_feedback_post
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Issue Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolutionFeedbackCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/staff/issues:
+    get:
+      tags:
+      - Issues
+      summary: Staff Queue
+      operationId: staff_queue_api_v1_staff_issues_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/staff/issues/{issue_id}/status:
+    patch:
+      tags:
+      - Issues
+      summary: Update Status
+      operationId: update_status_api_v1_staff_issues__issue_id__status_patch
+      parameters:
+      - name: issue_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Issue Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffIssueOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications:
+    get:
+      tags:
+      - Notifications
+      summary: Notifications
+      operationId: notifications_api_v1_notifications_get
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Size
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications/{notification_id}:
+    patch:
+      tags:
+      - Notifications
+      summary: Mark Notification
+      operationId: mark_notification_api_v1_notifications__notification_id__patch
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Notification Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkRead'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/staff:
+    post:
+      tags:
+      - Admin
+      summary: Create Staff
+      operationId: create_staff_api_v1_admin_staff_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Admin
+      summary: List Staff
+      operationId: list_staff_api_v1_admin_staff_get
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/staff/{staff_id}:
+    delete:
+      tags:
+      - Admin
+      summary: Delete Staff
+      operationId: delete_staff_api_v1_admin_staff__staff_id__delete
+      parameters:
+      - name: staff_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Staff Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/analytics:
+    get:
+      tags:
+      - Admin
+      summary: Analytics
+      operationId: analytics_api_v1_admin_analytics_get
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/hostels:
+    post:
+      tags:
+      - Admin
+      summary: Create Hostel
+      operationId: create_hostel_api_v1_admin_hostels_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HostelCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/floors:
+    post:
+      tags:
+      - Admin
+      summary: Create Floor
+      operationId: create_floor_api_v1_admin_floors_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FloorCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/wings:
+    post:
+      tags:
+      - Admin
+      summary: Create Wing
+      operationId: create_wing_api_v1_admin_wings_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WingCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/locations:
+    post:
+      tags:
+      - Admin
+      summary: Create Location
+      operationId: create_location_api_v1_admin_locations_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/locations/{location_id}:
+    patch:
+      tags:
+      - Admin
+      summary: Patch Location
+      operationId: patch_location_api_v1_admin_locations__location_id__patch
+      parameters:
+      - name: location_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Location Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/categories:
+    post:
+      tags:
+      - Admin
+      summary: Create Category
+      operationId: create_category_api_v1_admin_categories_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/categories/{category_id}:
+    patch:
+      tags:
+      - Admin
+      summary: Patch Category
+      operationId: patch_category_api_v1_admin_categories__category_id__patch
+      parameters:
+      - name: category_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Category Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/problem-types:
+    post:
+      tags:
+      - Admin
+      summary: Create Problem Type
+      operationId: create_problem_type_api_v1_admin_problem_types_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProblemTypeCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/problem-types/{problem_type_id}:
+    patch:
+      tags:
+      - Admin
+      summary: Patch Problem Type
+      operationId: patch_problem_type_api_v1_admin_problem_types__problem_type_id__patch
+      parameters:
+      - name: problem_type_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Problem Type Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProblemTypePatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/assets:
+    post:
+      tags:
+      - Admin
+      summary: Create Asset
+      operationId: create_asset_api_v1_admin_assets_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/assets/{asset_id}:
+    patch:
+      tags:
+      - Admin
+      summary: Patch Asset
+      operationId: patch_asset_api_v1_admin_assets__asset_id__patch
+      parameters:
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Asset Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/assets/{asset_id}/locations:
+    post:
+      tags:
+      - Admin
+      summary: Link Asset Location
+      operationId: link_asset_location_api_v1_admin_assets__asset_id__locations_post
+      parameters:
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Asset Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetLocationLink'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/assets/{asset_id}/locations/{location_id}:
+    delete:
+      tags:
+      - Admin
+      summary: Unlink Asset Location
+      operationId: unlink_asset_location_api_v1_admin_assets__asset_id__locations__location_id__delete
+      parameters:
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Asset Id
+      - name: location_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Location Id
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/me:
+    get:
+      tags:
+      - Profile
+      summary: Get Profile
+      operationId: get_profile_api_v1_me_get
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Profile
+      summary: Update Profile
+      operationId: update_profile_api_v1_me_patch
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfilePatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Profile
+      summary: Delete Profile
+      operationId: delete_profile_api_v1_me_delete
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/me/password:
+    post:
+      tags:
+      - Profile
+      summary: Change Password
+      operationId: change_password_api_v1_me_password_post
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: X-User-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/demo-users:
+    get:
+      tags:
+      - development demo
+      summary: List Demo Users
+      description: 'Return synthetic demo accounts without exposing password hashes.
+
+
+        This endpoint is for local coursework demonstrations only. Disable it in production.'
+      operationId: list_demo_users_api_v1_demo_users_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
+    AssetCreate:
+      properties:
+        hostel_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Hostel Id
+        name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name
+        asset_type:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Asset Type
+        description:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
+        location_ids:
+          items:
+            type: integer
+          type: array
+          title: Location Ids
+      type: object
+      required:
+      - hostel_id
+      - name
+      - asset_type
+      title: AssetCreate
+    AssetLocationLink:
+      properties:
+        location_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Location Id
+      type: object
+      required:
+      - location_id
+      title: AssetLocationLink
+    AssetPatch:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 2
+          - type: 'null'
+          title: Name
+        asset_type:
+          anyOf:
+          - type: string
+            maxLength: 80
+            minLength: 2
+          - type: 'null'
+          title: Asset Type
+        description:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
+      type: object
+      title: AssetPatch
+    Body_smart_draft_api_v1_issues_draft_post:
+      properties:
+        text:
+          type: string
+          title: Text
+          default: ''
+        image:
+          anyOf:
+          - type: string
+            contentMediaType: application/octet-stream
+          - type: 'null'
+          title: Image
+      type: object
+      title: Body_smart_draft_api_v1_issues_draft_post
+    CategoryCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Name
+        description:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
+        resolution_target_hours:
+          type: integer
+          maximum: 8760.0
+          minimum: 1.0
+          title: Resolution Target Hours
+          default: 168
+      type: object
+      required:
+      - name
+      title: CategoryCreate
+    CategoryPatch:
+      properties:
+        description:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
+        resolution_target_hours:
+          anyOf:
+          - type: integer
+            maximum: 8760.0
+            minimum: 1.0
+          - type: 'null'
+          title: Resolution Target Hours
+      type: object
+      title: CategoryPatch
+    ChangePassword:
+      properties:
+        current_password:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Current Password
+        new_password:
+          type: string
+          maxLength: 128
+          minLength: 5
+          title: New Password
+      type: object
+      required:
+      - current_password
+      - new_password
+      title: ChangePassword
+    FloorCreate:
+      properties:
+        hostel_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Hostel Id
+        floor_number:
+          type: integer
+          maximum: 100.0
+          minimum: 0.0
+          title: Floor Number
+      type: object
+      required:
+      - hostel_id
+      - floor_number
+      title: FloorCreate
+    GoogleIn:
+      properties:
+        credential:
+          type: string
+          maxLength: 10000
+          minLength: 20
+          title: Credential
+      type: object
+      required:
+      - credential
+      title: GoogleIn
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HostelCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          minLength: 2
+          title: Name
+      type: object
+      required:
+      - name
+      title: HostelCreate
+    IssueCreate:
+      properties:
+        title:
+          type: string
+          maxLength: 180
+          minLength: 5
+          title: Title
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 10
+          title: Description
+        location_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Location Id
+        problem_type_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Problem Type Id
+        asset_id:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Asset Id
+        room_label:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: Room Label
+        service_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Service Date
+        is_public:
+          type: boolean
+          title: Is Public
+          default: true
+      type: object
+      required:
+      - title
+      - description
+      - location_id
+      - problem_type_id
+      title: IssueCreate
+    IssueOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        location_id:
+          type: integer
+          title: Location Id
+        problem_type_id:
+          type: integer
+          title: Problem Type Id
+        asset_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Asset Id
+        status:
+          type: string
+          title: Status
+        service_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Service Date
+        is_public:
+          type: boolean
+          title: Is Public
+        due_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Due Date
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - title
+      - description
+      - location_id
+      - problem_type_id
+      - asset_id
+      - status
+      - service_date
+      - is_public
+      - due_date
+      - created_at
+      - updated_at
+      title: IssueOut
+    IssuePatch:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            maxLength: 180
+            minLength: 5
+          - type: 'null'
+          title: Title
+        description:
+          anyOf:
+          - type: string
+            maxLength: 5000
+            minLength: 10
+          - type: 'null'
+          title: Description
+        location_id:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Location Id
+        problem_type_id:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Problem Type Id
+        asset_id:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Asset Id
+        room_label:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: Room Label
+        service_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Service Date
+        is_public:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Public
+      type: object
+      title: IssuePatch
+    LocationCreate:
+      properties:
+        wing_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Wing Id
+        area_type:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Area Type
+        description:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
+      type: object
+      required:
+      - wing_id
+      - area_type
+      title: LocationCreate
+    LocationPatch:
+      properties:
+        area_type:
+          anyOf:
+          - type: string
+            maxLength: 80
+            minLength: 2
+          - type: 'null'
+          title: Area Type
+        description:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
+      type: object
+      title: LocationPatch
+    LoginIn:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+        password:
+          type: string
+          title: Password
+      type: object
+      required:
+      - email
+      - password
+      title: LoginIn
+    MarkRead:
+      properties:
+        is_read:
+          type: boolean
+          title: Is Read
+          default: true
+      type: object
+      title: MarkRead
+    NotificationOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        user_id:
+          type: integer
+          title: User Id
+        issue_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Issue Id
+        title:
+          type: string
+          title: Title
+        message:
+          type: string
+          title: Message
+        is_read:
+          type: boolean
+          title: Is Read
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - user_id
+      - issue_id
+      - title
+      - message
+      - is_read
+      - created_at
+      title: NotificationOut
+    PasswordResetIn:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+      type: object
+      required:
+      - email
+      title: PasswordResetIn
+    PasswordSetIn:
+      properties:
+        token:
+          type: string
+          maxLength: 200
+          minLength: 20
+          title: Token
+        password:
+          type: string
+          maxLength: 128
+          minLength: 5
+          title: Password
+      type: object
+      required:
+      - token
+      - password
+      title: PasswordSetIn
+    ProblemTypeCreate:
+      properties:
+        category_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Category Id
+        name:
+          type: string
+          maxLength: 100
+          minLength: 2
+          title: Name
+        description:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
+        requires_description:
+          type: boolean
+          title: Requires Description
+          default: false
+      type: object
+      required:
+      - category_id
+      - name
+      title: ProblemTypeCreate
+    ProblemTypePatch:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 2
+          - type: 'null'
+          title: Name
+        description:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
+        requires_description:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Requires Description
+      type: object
+      title: ProblemTypePatch
+    ProfilePatch:
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name
+      type: object
+      required:
+      - name
+      title: ProfilePatch
+    RegisterIn:
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name
+        email:
+          type: string
+          format: email
+          title: Email
+        password:
+          type: string
+          maxLength: 128
+          minLength: 5
+          title: Password
+        consent:
+          type: boolean
+          title: Consent
+      type: object
+      required:
+      - name
+      - email
+      - password
+      - consent
+      title: RegisterIn
+    ResolutionFeedbackCreate:
+      properties:
+        outcome:
+          type: string
+          pattern: ^(resolved|not_resolved|reopen_requested)$
+          title: Outcome
+        comment:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Comment
+      type: object
+      required:
+      - outcome
+      title: ResolutionFeedbackCreate
+    StaffCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name
+        email:
+          type: string
+          format: email
+          title: Email
+        category_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Category Id
+        password:
+          anyOf:
+          - type: string
+            maxLength: 128
+            minLength: 5
+          - type: 'null'
+          title: Password
+      type: object
+      required:
+      - name
+      - email
+      - category_id
+      title: StaffCreate
+    StaffIssueOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        location_id:
+          type: integer
+          title: Location Id
+        problem_type_id:
+          type: integer
+          title: Problem Type Id
+        asset_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Asset Id
+        status:
+          type: string
+          title: Status
+        service_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Service Date
+        is_public:
+          type: boolean
+          title: Is Public
+        due_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Due Date
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        room_label:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Room Label
+      type: object
+      required:
+      - id
+      - title
+      - description
+      - location_id
+      - problem_type_id
+      - asset_id
+      - status
+      - service_date
+      - is_public
+      - due_date
+      - created_at
+      - updated_at
+      - room_label
+      title: StaffIssueOut
+    StatusUpdate:
+      properties:
+        status:
+          type: string
+          pattern: ^(submitted|acknowledged|in_progress|resolved|closed|rejected|reopened)$
+          title: Status
+        comment:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Comment
+        is_internal:
+          type: boolean
+          title: Is Internal
+          default: false
+      type: object
+      required:
+      - status
+      title: StatusUpdate
+    TokenIn:
+      properties:
+        token:
+          type: string
+          maxLength: 200
+          minLength: 20
+          title: Token
+      type: object
+      required:
+      - token
+      title: TokenIn
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    WingCreate:
+      properties:
+        floor_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Floor Id
+        wing_name:
+          type: string
+          maxLength: 5
+          minLength: 1
+          title: Wing Name
+      type: object
+      required:
+      - floor_id
+      - wing_name
+      title: WingCreate
